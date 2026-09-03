@@ -101,7 +101,7 @@ function calcCarry(pos, mepEntrada, mepActual) {
 let vistaActual = "dashboard";
 let clienteActualId = null;
 
-const VISTAS_CON_SELECTOR = ["posiciones", "rendimiento"];
+const VISTAS_CON_SELECTOR = ["dashboardCliente", "posiciones", "rendimiento"];
 
 function irAVista(vista) {
   vistaActual = vista;
@@ -127,7 +127,8 @@ function render() {
   clienteActualId = sel.value;
   const cli = clientes.find(c => c.id === clienteActualId);
 
-  if (vistaActual === "dashboard") renderDashboard(clientes);
+  if (vistaActual === "general") renderDashboard(clientes);
+  else if (vistaActual === "dashboardCliente") renderDashboardCliente(cli);
   else if (vistaActual === "posiciones") renderPosiciones(cli);
   else if (vistaActual === "rendimiento") renderRendimiento(cli);
   else if (vistaActual === "cauciones") renderCaucionesGlobal(clientes);
@@ -138,7 +139,7 @@ function render() {
 // ---------- Dashboard ----------
 
 function renderDashboard(clientes) {
-  const el = document.getElementById("view-dashboard");
+  const el = document.getElementById("view-general");
   const totalCartera = clientes.reduce((a, c) => a + (c.totalPortfolio || 0), 0);
   const enCaucionPesos = clientes.filter(c => c.pesos.cuentaCorriente < 0);
   const enCaucionUSD = clientes.filter(c => c.dolares.cuentaCorrienteUSD < 0);
@@ -182,6 +183,90 @@ function renderDashboard(clientes) {
           <tbody>${filasCaucion}</tbody>
         </table>
       ` : `<p class="muted">Ninguna cuenta tiene caución tomada.</p>`}
+    </div>
+  `;
+}
+
+// ---------- Dashboard por comitente ----------
+
+function renderDashboardCliente(cli) {
+  const el = document.getElementById("view-dashboardCliente");
+
+  const posPesos = (cli.detallePesos || []).map(p => ({ ...p, moneda: "ARS" }));
+  const posDolares = (cli.detalleDolares || []).map(p => ({ ...p, moneda: "USD" }));
+  const todas = [...posPesos, ...posDolares].map(p => ({ ...p, ...calcPosicion(p) }));
+
+  let totalCostoARS = 0, totalResultadosARS = 0, totalValorARS = 0;
+  todas.forEach(p => {
+    const esBono = BONOS.includes(p.t);
+    const factor = esBono ? p.c / 100 : p.c;
+    const fx = p.moneda === "USD" ? (cli.tc || 0) : 1;
+    totalCostoARS += factor * p.co * fx;
+    totalResultadosARS += p.resultados * fx;
+    totalValorARS += p.importe * fx;
+  });
+  const rendimientoPct = totalCostoARS ? (totalResultadosARS / totalCostoARS) * 100 : null;
+
+  let mejor = null, peor = null;
+  todas.forEach(p => {
+    if (!p.co) return;
+    if (!mejor || p.varPct > mejor.varPct) mejor = p;
+    if (!peor || p.varPct < peor.varPct) peor = p;
+  });
+
+  const distFilas = todas
+    .map(p => ({ ticker: p.t, valorARS: p.importe * (p.moneda === "USD" ? (cli.tc || 0) : 1) }))
+    .filter(p => p.valorARS > 0)
+    .sort((a, b) => b.valorARS - a.valorARS);
+  const distTop = distFilas.slice(0, 8);
+  const distResto = distFilas.slice(8).reduce((a, p) => a + p.valorARS, 0);
+  if (distResto > 0) distTop.push({ ticker: "Otros", valorARS: distResto });
+
+  el.innerHTML = `
+    <div class="stats-row">
+      <div class="stat-card">
+        <span class="stat-label">Capital actual</span>
+        <span class="stat-value">$ ${fmtMoney(cli.totalPortfolio, 0)}</span>
+      </div>
+      <div class="stat-card ${rendimientoPct !== null && rendimientoPct < 0 ? "warn" : ""}">
+        <span class="stat-label">Rendimiento</span>
+        <span class="stat-value ${rendimientoPct !== null ? (rendimientoPct < 0 ? "neg" : "pos") : ""}">${rendimientoPct !== null ? fmtPct(rendimientoPct) : "—"}</span>
+        <span class="stat-sub">${rendimientoPct !== null ? "Sobre costo actual" : "Sin costo cargado"}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">TIR anualizada</span>
+        <span class="stat-value">—</span>
+        <span class="stat-sub">Datos insuficientes</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Mejor activo</span>
+        <span class="stat-value pos">${mejor ? mejor.t : "—"}</span>
+        <span class="stat-sub">${mejor ? fmtPct(mejor.varPct) : "Sin datos"}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Peor activo</span>
+        <span class="stat-value neg">${peor ? peor.t : "—"}</span>
+        <span class="stat-sub">${peor ? fmtPct(peor.varPct) : "Sin datos"}</span>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="panel">
+        <h3>Rendimiento del portfolio</h3>
+        <p class="muted" style="text-align:center; padding: 30px 0;">
+          Sin datos de evolución todavía — se arma con el histórico diario de operaciones.
+        </p>
+      </div>
+      <div class="panel">
+        <h3>Distribución de activos</h3>
+        ${distTop.length ? distTop.map(p => `
+          <div class="dist-row">
+            <span class="dist-label">${p.ticker}</span>
+            <div class="dist-bar-wrap"><div class="dist-bar" style="width:${totalValorARS ? (p.valorARS / totalValorARS * 100) : 0}%"></div></div>
+            <span class="dist-pct">${totalValorARS ? fmtPct(p.valorARS / totalValorARS * 100) : "-"}</span>
+          </div>
+        `).join("") : `<p class="muted">Sin posiciones.</p>`}
+      </div>
     </div>
   `;
 }
@@ -692,7 +777,7 @@ function init() {
   document.getElementById("btnExportar").addEventListener("click", exportarEstado);
   document.getElementById("btnLogout").addEventListener("click", logout);
   document.getElementById("fecha").textContent = new Date().toLocaleDateString("es-AR", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-  irAVista("dashboard");
+  irAVista("general");
 }
 
 document.addEventListener("DOMContentLoaded", () => {

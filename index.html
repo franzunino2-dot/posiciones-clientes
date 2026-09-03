@@ -139,6 +139,14 @@
     min-width: 260px;
   }
 
+  .dist-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 13px; }
+  .dist-label { width: 90px; flex-shrink: 0; }
+  .dist-bar-wrap { flex: 1; background: var(--bg-card2); border-radius: 4px; height: 10px; overflow: hidden; }
+  .dist-bar { height: 100%; background: var(--accent); }
+  .dist-pct { width: 55px; text-align: right; color: var(--muted); flex-shrink: 0; }
+  .two-col { display: flex; gap: 16px; flex-wrap: wrap; }
+  .two-col > .panel { flex: 1; min-width: 280px; }
+
   .periodo-tabs { display: flex; gap: 6px; margin-bottom: 16px; }
   .periodo-btn { background: var(--bg-card); }
   .periodo-btn.active { background: var(--accent); color: #06140d; border-color: var(--accent); font-weight: 600; }
@@ -200,7 +208,8 @@
   <aside class="sidebar">
     <div class="brand"><b>Equanima</b><span>Posiciones de Clientes</span></div>
     <nav>
-      <button class="navbtn" data-view="dashboard">Dashboard</button>
+      <button class="navbtn" data-view="general">General</button>
+      <button class="navbtn" data-view="dashboardCliente">Dashboard</button>
       <button class="navbtn" data-view="posiciones">Posiciones</button>
       <button class="navbtn" data-view="rendimiento">Rendimiento</button>
       <button class="navbtn" data-view="cauciones">Cauciones</button>
@@ -224,7 +233,8 @@
     </div>
 
     <main>
-      <div class="view" id="view-dashboard"></div>
+      <div class="view" id="view-general"></div>
+      <div class="view" id="view-dashboardCliente"></div>
       <div class="view" id="view-posiciones"></div>
       <div class="view" id="view-rendimiento"></div>
       <div class="view" id="view-cauciones"></div>
