@@ -273,29 +273,50 @@ function renderDashboardCliente(cli) {
 
 // ---------- Posiciones (vista por comitente) ----------
 
+let monedaPosiciones = "ARS";
+
+function setMonedaPosiciones(m) {
+  monedaPosiciones = m;
+  render();
+}
+
 function renderPosiciones(cli) {
   const el = document.getElementById("view-posiciones");
-  const totalResultadosPesos = (cli.detallePesos || []).reduce((a, p) => a + calcPosicion(p).resultados, 0);
-  const totalResultadosDolares = (cli.detalleDolares || []).reduce((a, p) => a + calcPosicion(p).resultados, 0);
-  const totalRealizado = (cli.ganancias || []).reduce((a, g) => a + (parseFloat(g.monto) || 0), 0);
+  const key = monedaPosiciones === "ARS" ? "detallePesos" : "detalleDolares";
+  const simbolo = monedaPosiciones === "ARS" ? "$" : "USD";
+  const posiciones = cli[key] || [];
+  const ganancias = (cli.ganancias || []).filter(g => (g.moneda || "ARS") === monedaPosiciones);
+
+  const totalNoRealizado = posiciones.reduce((a, p) => a + calcPosicion(p).resultados, 0);
+  const totalRealizado = ganancias.reduce((a, g) => a + ((parseFloat(g.ventaRescate) || 0) - (parseFloat(g.costo) || 0)), 0);
+  const totalTotal = totalNoRealizado + totalRealizado;
 
   el.innerHTML = `
+    <div class="moneda-toggle">
+      <button class="periodo-btn ${monedaPosiciones === "ARS" ? "active" : ""}" onclick="setMonedaPosiciones('ARS')">Pesos</button>
+      <button class="periodo-btn ${monedaPosiciones === "USD" ? "active" : ""}" onclick="setMonedaPosiciones('USD')">Dólares</button>
+    </div>
+
     <div class="stats-row">
       <div class="stat-card">
-        <span class="stat-label">Total Portafolio</span>
-        <span class="stat-value">$ ${fmtMoney(cli.totalPortfolio)}</span>
-      </div>
-      <div class="stat-card ${totalResultadosPesos < 0 ? "warn" : ""}">
-        <span class="stat-label">P&L no realizado ($)</span>
-        <span class="stat-value ${totalResultadosPesos < 0 ? "neg" : "pos"}">$ ${fmtMoney(totalResultadosPesos)}</span>
-      </div>
-      <div class="stat-card ${totalResultadosDolares < 0 ? "warn" : ""}">
-        <span class="stat-label">P&L no realizado (USD)</span>
-        <span class="stat-value ${totalResultadosDolares < 0 ? "neg" : "pos"}">USD ${fmtMoney(totalResultadosDolares)}</span>
+        <span class="stat-label">Actuales</span>
+        <span class="stat-value">${posiciones.length}</span>
       </div>
       <div class="stat-card">
+        <span class="stat-label">Cerradas</span>
+        <span class="stat-value">${ganancias.length}</span>
+      </div>
+      <div class="stat-card ${totalNoRealizado < 0 ? "warn" : ""}">
+        <span class="stat-label">P&L no realizado</span>
+        <span class="stat-value ${totalNoRealizado < 0 ? "neg" : "pos"}">${simbolo} ${fmtMoney(totalNoRealizado)}</span>
+      </div>
+      <div class="stat-card ${totalRealizado < 0 ? "warn" : ""}">
         <span class="stat-label">P&L realizado</span>
-        <span class="stat-value ${totalRealizado < 0 ? "neg" : "pos"}">$ ${fmtMoney(totalRealizado)}</span>
+        <span class="stat-value ${totalRealizado < 0 ? "neg" : "pos"}">${simbolo} ${fmtMoney(totalRealizado)}</span>
+      </div>
+      <div class="stat-card ${totalTotal < 0 ? "warn" : ""}">
+        <span class="stat-label">P&L total</span>
+        <span class="stat-value ${totalTotal < 0 ? "neg" : "pos"}">${simbolo} ${fmtMoney(totalTotal)}</span>
       </div>
     </div>
 
@@ -318,25 +339,21 @@ function renderPosiciones(cli) {
     ` : ""}
 
     <div class="panel">
-      <h3>Detalle pesos</h3>
-      <div class="table-wrap" id="tablaPesos"></div>
+      <h3>Actuales</h3>
+      <p class="muted">Valor, costo y P&L latente de posiciones abiertas.</p>
+      <div class="table-wrap" id="tablaActuales"></div>
     </div>
 
     <div class="panel">
-      <h3>Detalle dólares</h3>
-      <div class="table-wrap" id="tablaDolares"></div>
-    </div>
-
-    <div class="panel">
-      <h3>Ganancias / pérdidas realizadas</h3>
-      <div class="table-wrap" id="ganancias"></div>
+      <h3>Cerradas</h3>
+      <p class="muted">P&L realizado por activo. Cargá cantidad, costo y venta/rescate para cada posición cerrada.</p>
+      <div class="table-wrap" id="tablaCerradas"></div>
     </div>
   `;
 
   if (document.getElementById("caucionInline")) renderCaucionCliente(cli, "caucionInline");
-  renderDetalle(cli, "detallePesos", "tablaPesos", false);
-  renderDetalle(cli, "detalleDolares", "tablaDolares", true);
-  renderGanancias(cli);
+  renderActuales(cli, key, simbolo);
+  renderCerradas(cli, monedaPosiciones, simbolo);
 }
 
 function renderCaucionCliente(cli, elId) {
@@ -380,30 +397,29 @@ function renderCaucionCliente(cli, elId) {
   el.innerHTML = `<div class="caucion-grid">${bloques.join("")}</div>`;
 }
 
-function renderDetalle(cli, key, tablaId, esDolar) {
-  const el = document.getElementById(tablaId);
+function renderActuales(cli, key, simbolo) {
+  const el = document.getElementById("tablaActuales");
   const filas = cli[key] || [];
   if (!filas.length) {
-    el.innerHTML = `<p class="muted">Sin posiciones ${esDolar ? "en dólares" : "en pesos"}.</p>`;
+    el.innerHTML = `<p class="muted">No hay posiciones abiertas.</p>`;
     return;
   }
-  let totalImporte = 0, totalResultados = 0, totalResultadoDia = 0;
+  let totalImporte = 0, totalResultados = 0;
   const filasHtml = filas.map((pos, i) => {
-    const { importe, resultados, varPct, resultadoDia, varDiaPct } = calcPosicion(pos);
-    totalImporte += importe; totalResultados += resultados; totalResultadoDia += resultadoDia;
+    const { importe, resultados } = calcPosicion(pos);
+    totalImporte += importe; totalResultados += resultados;
+    const tipo = BONOS.includes(pos.t) ? "Bono/Letra" : "Acción/CEDEAR";
     return `
       <tr>
-        <td>${pos.t}</td>
-        <td>${pos.n}</td>
+        <td>${pos.t}<br><span class="muted" style="font-size:11px">${pos.n}</span></td>
+        <td>${simbolo} ${fmtMoney(importe)}</td>
         <td><input type="number" value="${pos.c}" step="any" onchange="editarPosicion('${cli.id}','${key}',${i},'c',this.value)"></td>
         <td><input type="number" value="${pos.p}" step="any" onchange="editarPosicion('${cli.id}','${key}',${i},'p',this.value)"></td>
-        <td>${fmtMoney(importe)}</td>
         <td><input type="number" value="${pos.co}" step="any" onchange="editarPosicion('${cli.id}','${key}',${i},'co',this.value)"></td>
-        <td class="${resultados < 0 ? "neg" : "pos"}">${fmtPct(varPct)}</td>
-        <td class="${resultados < 0 ? "neg" : "pos"}">${fmtMoney(resultados)}</td>
-        <td><input type="number" value="${pos.pa}" step="any" onchange="editarPosicion('${cli.id}','${key}',${i},'pa',this.value)"></td>
-        <td class="${resultadoDia < 0 ? "neg" : "pos"}">${fmtPct(varDiaPct)}</td>
-        <td class="${resultadoDia < 0 ? "neg" : "pos"}">${fmtMoney(resultadoDia)}</td>
+        <td class="${resultados < 0 ? "neg" : "pos"}">${simbolo} ${fmtMoney(resultados)}</td>
+        <td class="muted">-</td>
+        <td>${tipo}</td>
+        <td>Equanima</td>
         <td><button onclick="borrarPosicion('${cli.id}','${key}',${i})">✕</button></td>
       </tr>
     `;
@@ -411,14 +427,13 @@ function renderDetalle(cli, key, tablaId, esDolar) {
   el.innerHTML = `
     <table>
       <thead>
-        <tr><th>Ticker</th><th>Nombre</th><th>Cantidad</th><th>Precio</th><th>Importe</th><th>Costo</th>
-        <th>%Var</th><th>Resultados</th><th>Precio ant.</th><th>%Var día</th><th>Resultado día</th><th></th></tr>
+        <tr><th>Activo</th><th>Valor</th><th>Cantidad</th><th>Precio</th><th>Costo Prom.</th>
+        <th>P&L No Realiz.</th><th>P&L Realiz.</th><th>Tipo</th><th>Broker</th><th></th></tr>
       </thead>
       <tbody>${filasHtml}</tbody>
       <tfoot>
-        <tr><td colspan="4">Subtotal</td><td>${fmtMoney(totalImporte)}</td><td></td><td></td>
-        <td class="${totalResultados < 0 ? "neg" : "pos"}">${fmtMoney(totalResultados)}</td><td></td><td></td>
-        <td class="${totalResultadoDia < 0 ? "neg" : "pos"}">${fmtMoney(totalResultadoDia)}</td><td></td></tr>
+        <tr><td>Subtotal</td><td>${simbolo} ${fmtMoney(totalImporte)}</td><td></td><td></td><td></td>
+        <td class="${totalResultados < 0 ? "neg" : "pos"}">${simbolo} ${fmtMoney(totalResultados)}</td><td></td><td></td><td></td><td></td></tr>
       </tfoot>
     </table>
     <button onclick="agregarPosicion('${cli.id}','${key}')">+ Agregar posición</button>
@@ -455,32 +470,50 @@ function borrarPosicion(id, key, idx) {
   render();
 }
 
-function renderGanancias(cli) {
-  const el = document.getElementById("ganancias");
-  const filas = (cli.ganancias || []).map((g, i) => `
-    <tr>
-      <td><input value="${g.fecha}" onchange="editarGanancia('${cli.id}',${i},'fecha',this.value)"></td>
-      <td><input value="${g.ticker}" onchange="editarGanancia('${cli.id}',${i},'ticker',this.value)"></td>
-      <td><input type="number" value="${g.monto}" step="any" onchange="editarGanancia('${cli.id}',${i},'monto',this.value)"></td>
-      <td><input value="${g.nota || ""}" onchange="editarGanancia('${cli.id}',${i},'nota',this.value)"></td>
-      <td><button onclick="borrarGanancia('${cli.id}',${i})">✕</button></td>
-    </tr>
-  `).join("");
-  const total = (cli.ganancias || []).reduce((a, g) => a + (parseFloat(g.monto) || 0), 0);
-  el.innerHTML = `
-    <table>
-      <thead><tr><th>Fecha</th><th>Especie</th><th>Monto realizado ($)</th><th>Nota</th><th></th></tr></thead>
-      <tbody>${filas}</tbody>
-      <tfoot><tr><td colspan="2">Total realizado</td><td class="${total < 0 ? "neg" : "pos"}">${fmtMoney(total)}</td><td colspan="2"></td></tr></tfoot>
-    </table>
-    <button onclick="agregarGanancia('${cli.id}')">+ Agregar ganancia/pérdida realizada</button>
-  `;
+function renderCerradas(cli, moneda, simbolo) {
+  const el = document.getElementById("tablaCerradas");
+  const todas = cli.ganancias || [];
+  const indices = todas.map((g, i) => i).filter(i => (todas[i].moneda || "ARS") === moneda);
+  if (!indices.length) {
+    el.innerHTML = `<p class="muted">Todavía no hay posiciones cerradas con movimientos económicos.</p>`;
+  } else {
+    const filas = indices.map(i => {
+      const g = todas[i];
+      const costo = parseFloat(g.costo) || 0;
+      const venta = parseFloat(g.ventaRescate) || 0;
+      const pnl = venta - costo;
+      const pct = costo ? (pnl / costo) * 100 : null;
+      return `
+        <tr>
+          <td><input value="${g.ticker}" onchange="editarGanancia('${cli.id}',${i},'ticker',this.value)"></td>
+          <td>Equanima</td>
+          <td><input type="number" value="${g.cantidad || 0}" step="any" onchange="editarGanancia('${cli.id}',${i},'cantidad',this.value)"></td>
+          <td><input type="number" value="${g.costo || 0}" step="any" onchange="editarGanancia('${cli.id}',${i},'costo',this.value)"></td>
+          <td><input type="number" value="${g.ventaRescate || 0}" step="any" onchange="editarGanancia('${cli.id}',${i},'ventaRescate',this.value)"></td>
+          <td class="${pnl < 0 ? "neg" : "pos"}">${simbolo} ${fmtMoney(pnl)}</td>
+          <td class="${pct !== null && pct < 0 ? "neg" : pct !== null ? "pos" : ""}">${pct !== null ? fmtPct(pct) : "-"}</td>
+          <td><input type="date" value="${g.fecha}" onchange="editarGanancia('${cli.id}',${i},'fecha',this.value)"></td>
+          <td><button onclick="borrarGanancia('${cli.id}',${i})">✕</button></td>
+        </tr>
+      `;
+    }).join("");
+    el.innerHTML = `
+      <table>
+        <thead><tr><th>Activo</th><th>Broker</th><th>Cantidad</th><th>Costo</th><th>Venta/Rescate</th>
+        <th>P&L Realiz.</th><th>%</th><th>Período</th><th></th></tr></thead>
+        <tbody>${filas}</tbody>
+      </table>
+    `;
+  }
+  const btn = document.createElement("div");
+  el.insertAdjacentHTML("beforeend", `<button onclick="agregarGanancia('${cli.id}','${moneda}')">+ Agregar posición cerrada</button>`);
 }
 
 function editarGanancia(id, idx, campo, valor) {
   const cli = getClientes().find(c => c.id === id);
   if (!cli.ganancias) cli.ganancias = [];
-  cli.ganancias[idx][campo] = campo === "monto" ? (parseFloat(valor.toString().replace(",", ".")) || 0) : valor;
+  const numerico = ["cantidad", "costo", "ventaRescate"].includes(campo);
+  cli.ganancias[idx][campo] = numerico ? (parseFloat(valor.toString().replace(",", ".")) || 0) : valor;
   const overrides = loadOverrides();
   if (!overrides[id]) overrides[id] = {};
   overrides[id].ganancias = cli.ganancias;
@@ -488,10 +521,10 @@ function editarGanancia(id, idx, campo, valor) {
   render();
 }
 
-function agregarGanancia(id) {
+function agregarGanancia(id, moneda) {
   const cli = getClientes().find(c => c.id === id);
   if (!cli.ganancias) cli.ganancias = [];
-  cli.ganancias.push({ fecha: todayStr(), ticker: "", monto: 0, nota: "" });
+  cli.ganancias.push({ fecha: todayStr(), ticker: "", cantidad: 0, costo: 0, ventaRescate: 0, moneda: moneda || "ARS" });
   const overrides = loadOverrides();
   if (!overrides[id]) overrides[id] = {};
   overrides[id].ganancias = cli.ganancias;
@@ -534,7 +567,7 @@ function renderRendimiento(cli) {
   if (periodoRendimiento === "hoy") {
     const resultadoDiaPesos = (cli.detallePesos || []).reduce((a, p) => a + calcPosicion(p).resultadoDia, 0);
     const resultadoDiaDolares = (cli.detalleDolares || []).reduce((a, p) => a + calcPosicion(p).resultadoDia, 0);
-    const realizadoHoy = (cli.ganancias || []).filter(g => g.fecha === todayStr()).reduce((a, g) => a + (parseFloat(g.monto) || 0), 0);
+    const realizadoHoy = (cli.ganancias || []).filter(g => g.fecha === todayStr()).reduce((a, g) => a + ((parseFloat(g.ventaRescate) || 0) - (parseFloat(g.costo) || 0)), 0);
     el.innerHTML = `
       <div class="periodo-tabs">${tabsHtml}</div>
       <div class="stats-row">
