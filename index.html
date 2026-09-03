@@ -6,15 +6,16 @@
 <title>Posiciones de Clientes — Equanima</title>
 <style>
   :root {
-    --bg: #1c2230;
-    --bg-card: #252d3d;
-    --bg-card2: #2c3546;
-    --border: #3a4356;
+    --bg: #10151a;
+    --bg-card: #16211c;
+    --bg-card2: #1c2a23;
+    --border: #24352c;
     --text: #eef1f6;
-    --muted: #9aa4b8;
-    --accent: #4f7cff;
+    --muted: #93a39a;
+    --accent: #3ecf8e;
     --green: #3ecf8e;
     --red: #ff5c5c;
+    --sidebar-w: 220px;
   }
   * { box-sizing: border-box; }
   body {
@@ -23,18 +24,6 @@
     background: var(--bg);
     color: var(--text);
   }
-  header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 24px;
-    background: #14181f;
-    border-bottom: 1px solid var(--border);
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-  header h1 { font-size: 18px; margin: 0; }
-  header .controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   select, input, button {
     background: var(--bg-card2);
     color: var(--text);
@@ -45,19 +34,58 @@
   }
   button { cursor: pointer; }
   button:hover { border-color: var(--accent); }
-  #fecha { color: var(--muted); font-size: 13px; }
 
-  main { padding: 20px 24px; max-width: 1200px; margin: 0 auto; }
-  section { margin-bottom: 28px; }
+  #app { display: none; min-height: 100vh; }
+
+  .sidebar {
+    width: var(--sidebar-w);
+    flex-shrink: 0;
+    background: #0c1210;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 20px 0;
+  }
+  .sidebar .brand { padding: 0 20px 20px; }
+  .sidebar .brand b { font-size: 17px; display: block; }
+  .sidebar .brand span { color: var(--muted); font-size: 12px; }
+  .sidebar nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+  .navbtn {
+    background: none; border: none; border-radius: 0;
+    text-align: left; padding: 10px 20px; color: var(--muted);
+    font-size: 14px; cursor: pointer;
+  }
+  .navbtn:hover { background: var(--bg-card2); color: var(--text); }
+  .navbtn.active { background: var(--bg-card2); color: var(--accent); border-left: 3px solid var(--accent); padding-left: 17px; }
+  .sidebar .bottom { padding: 0 20px; }
+  .sidebar .bottom button { width: 100%; }
+
+  .content { flex: 1; min-width: 0; }
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .topbar .controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  #fecha { color: var(--muted); font-size: 13px; text-transform: capitalize; }
+  #selectorWrap { display: flex; align-items: center; gap: 12px; }
+
+  main { padding: 20px 24px; max-width: 1200px; }
+  .view { display: none; }
   h2 { font-size: 16px; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 12px; }
   h3 { font-size: 15px; margin: 0 0 10px; }
   h4 { margin: 0 0 10px; font-size: 14px; }
 
-  .card {
+  .panel {
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: 16px;
+    margin-bottom: 20px;
   }
   .row {
     display: flex;
@@ -82,15 +110,38 @@
     font-size: 13px;
   }
 
-  #caucion { display: flex; gap: 16px; flex-wrap: wrap; }
-  .caucion-box {
+  .stats-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+  .stat-card {
     background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    flex: 1;
+    min-width: 180px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .stat-card.warn { border-color: var(--red); }
+  .stat-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
+  .stat-value { font-size: 22px; font-weight: 700; }
+  .stat-value.neg { color: var(--red); }
+  .stat-value.pos { color: var(--green); }
+  .stat-sub { color: var(--muted); font-size: 12px; }
+
+  .caucion-grid { display: flex; gap: 16px; flex-wrap: wrap; }
+  .caucion-box {
+    background: var(--bg-card2);
     border: 1px solid var(--red);
     border-radius: 10px;
     padding: 16px;
     flex: 1;
     min-width: 260px;
   }
+
+  .periodo-tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+  .periodo-btn { background: var(--bg-card); }
+  .periodo-btn.active { background: var(--accent); color: #06140d; border-color: var(--accent); font-weight: 600; }
 
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   thead th {
@@ -110,7 +161,7 @@
     padding: 4px 6px;
     font-size: 13px;
   }
-  .table-wrap { overflow-x: auto; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+  .table-wrap { overflow-x: auto; }
 
   #login {
     display: flex;
@@ -131,7 +182,6 @@
     width: 280px;
   }
   #loginError { color: var(--red); font-size: 13px; min-height: 16px; }
-  #app { display: none; }
   .fila-caucion td:nth-child(2) { color: var(--red); }
 </style>
 </head>
@@ -147,47 +197,41 @@
 </div>
 
 <div id="app">
-  <header>
-    <h1>Posiciones de Clientes — Equanima</h1>
-    <div class="controls">
-      <span id="fecha"></span>
-      <select id="comitenteSelect"></select>
-      <button id="btnExportar">Exportar estado (JSON)</button>
+  <aside class="sidebar">
+    <div class="brand"><b>Equanima</b><span>Posiciones de Clientes</span></div>
+    <nav>
+      <button class="navbtn" data-view="dashboard">Dashboard</button>
+      <button class="navbtn" data-view="posiciones">Posiciones</button>
+      <button class="navbtn" data-view="rendimiento">Rendimiento</button>
+      <button class="navbtn" data-view="cauciones">Cauciones</button>
+      <button class="navbtn" data-view="carry">Carry Trade</button>
+      <button class="navbtn" data-view="comitentes">Comitentes</button>
+    </nav>
+    <div class="bottom">
       <button id="btnLogout">Salir</button>
     </div>
-  </header>
+  </aside>
 
-  <main>
-    <section>
-      <h2>Resumen del comitente</h2>
-      <div id="resumen"></div>
-    </section>
+  <div class="content">
+    <div class="topbar">
+      <span id="fecha"></span>
+      <div class="controls">
+        <div id="selectorWrap">
+          <select id="comitenteSelect"></select>
+        </div>
+        <button id="btnExportar">Exportar estado (JSON)</button>
+      </div>
+    </div>
 
-    <section>
-      <h2>Caución / financiamiento</h2>
-      <div id="caucion"></div>
-    </section>
-
-    <section>
-      <h2>Detalle pesos</h2>
-      <div class="table-wrap" id="tablaPesos"></div>
-    </section>
-
-    <section>
-      <h2>Detalle dólares</h2>
-      <div class="table-wrap" id="tablaDolares"></div>
-    </section>
-
-    <section>
-      <h2>Ganancias / pérdidas realizadas</h2>
-      <div class="table-wrap" id="ganancias"></div>
-    </section>
-
-    <section>
-      <h2>Vista general — todos los comitentes</h2>
-      <div class="table-wrap" id="vistaGeneral"></div>
-    </section>
-  </main>
+    <main>
+      <div class="view" id="view-dashboard"></div>
+      <div class="view" id="view-posiciones"></div>
+      <div class="view" id="view-rendimiento"></div>
+      <div class="view" id="view-cauciones"></div>
+      <div class="view" id="view-carry"></div>
+      <div class="view" id="view-comitentes"></div>
+    </main>
+  </div>
 </div>
 
 <script src="data.js"></script>

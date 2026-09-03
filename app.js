@@ -1,4 +1,4 @@
-// Lógica de la app: cálculo de posiciones, cauciones y persistencia local.
+// Lógica de la app: cálculo de posiciones, cauciones, carry trade y persistencia local.
 
 const LS_KEY = "posiciones_clientes_v1";
 const PASSWORD = "091218"; // cambiar acá si querés otra clave
@@ -38,6 +38,7 @@ function getClientes() {
     if (ov.ganancias) cli.ganancias = ov.ganancias;
     if (ov.detallePesos) cli.detallePesos = ov.detallePesos;
     if (ov.detalleDolares) cli.detalleDolares = ov.detalleDolares;
+    if (ov.mepActualCarry !== undefined) cli.mepActualCarry = ov.mepActualCarry;
     return cli;
   });
 }
@@ -83,9 +84,32 @@ function calcInteres(saldo, tasaTNA, fechaInicioStr) {
   return { dias, interes };
 }
 
-// ---------- Render ----------
+// Carry trade: monto en pesos invertido en la letra, convertido a USD al MEP de entrada,
+// comparado contra el valor actual convertido al MEP de hoy.
+function calcCarry(pos, mepEntrada, mepActual) {
+  const montoPesos = (pos.c / 100) * pos.co;
+  const valorActualPesos = (pos.c / 100) * pos.p;
+  const usdInvertido = mepEntrada ? montoPesos / mepEntrada : null;
+  const valorActualUSD = mepActual && usdInvertido !== null ? valorActualPesos / mepActual : null;
+  const rendUSD = usdInvertido && valorActualUSD !== null ? (valorActualUSD / usdInvertido - 1) * 100 : null;
+  const mepBreakeven = usdInvertido ? valorActualPesos / usdInvertido : null;
+  return { montoPesos, valorActualPesos, usdInvertido, valorActualUSD, rendUSD, mepBreakeven };
+}
 
+// ---------- Navegación ----------
+
+let vistaActual = "dashboard";
 let clienteActualId = null;
+
+const VISTAS_CON_SELECTOR = ["posiciones", "rendimiento"];
+
+function irAVista(vista) {
+  vistaActual = vista;
+  document.querySelectorAll(".navbtn").forEach(b => b.classList.toggle("active", b.dataset.view === vista));
+  document.querySelectorAll(".view").forEach(v => v.style.display = v.id === "view-" + vista ? "block" : "none");
+  document.getElementById("selectorWrap").style.display = VISTAS_CON_SELECTOR.includes(vista) ? "flex" : "none";
+  render();
+}
 
 function render() {
   const clientes = getClientes();
@@ -102,19 +126,96 @@ function render() {
   }
   clienteActualId = sel.value;
   const cli = clientes.find(c => c.id === clienteActualId);
-  renderResumen(cli);
-  renderCaucion(cli);
-  renderDetalle(cli, "detallePesos", "tablaPesos", false);
-  renderDetalle(cli, "detalleDolares", "tablaDolares", true);
-  renderGanancias(cli);
-  renderVistaGeneral(clientes);
+
+  if (vistaActual === "dashboard") renderDashboard(clientes);
+  else if (vistaActual === "posiciones") renderPosiciones(cli);
+  else if (vistaActual === "rendimiento") renderRendimiento(cli);
+  else if (vistaActual === "cauciones") renderCaucionesGlobal(clientes);
+  else if (vistaActual === "carry") renderCarryTrade(clientes);
+  else if (vistaActual === "comitentes") renderVistaGeneral(clientes);
 }
 
-function renderResumen(cli) {
-  const el = document.getElementById("resumen");
+// ---------- Dashboard ----------
+
+function renderDashboard(clientes) {
+  const el = document.getElementById("view-dashboard");
+  const totalCartera = clientes.reduce((a, c) => a + (c.totalPortfolio || 0), 0);
+  const enCaucionPesos = clientes.filter(c => c.pesos.cuentaCorriente < 0);
+  const enCaucionUSD = clientes.filter(c => c.dolares.cuentaCorrienteUSD < 0);
+  const totalCaucionPesos = enCaucionPesos.reduce((a, c) => a + Math.abs(c.pesos.cuentaCorriente), 0);
+  const totalCaucionUSD = enCaucionUSD.reduce((a, c) => a + Math.abs(c.dolares.cuentaCorrienteUSD), 0);
+
+  const filasCaucion = clientes.filter(c => c.pesos.cuentaCorriente < 0 || c.dolares.cuentaCorrienteUSD < 0).map(c => `
+    <tr>
+      <td>${c.id}</td><td>${c.nombre}</td>
+      <td class="${c.pesos.cuentaCorriente < 0 ? "neg" : ""}">$ ${fmtMoney(c.pesos.cuentaCorriente)}</td>
+      <td class="${c.dolares.cuentaCorrienteUSD < 0 ? "neg" : ""}">USD ${fmtMoney(c.dolares.cuentaCorrienteUSD)}</td>
+    </tr>
+  `).join("");
+
   el.innerHTML = `
-    <div class="card">
-      <div class="row"><span>Total Portafolio</span><b>$ ${fmtMoney(cli.totalPortfolio)}</b></div>
+    <div class="stats-row">
+      <div class="stat-card">
+        <span class="stat-label">Cartera total</span>
+        <span class="stat-value">$ ${fmtMoney(totalCartera, 0)}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Comitentes</span>
+        <span class="stat-value">${clientes.length}</span>
+      </div>
+      <div class="stat-card ${totalCaucionPesos ? "warn" : ""}">
+        <span class="stat-label">Caución en pesos</span>
+        <span class="stat-value">$ ${fmtMoney(totalCaucionPesos, 0)}</span>
+        <span class="stat-sub">${enCaucionPesos.length} cuenta(s)</span>
+      </div>
+      <div class="stat-card ${totalCaucionUSD ? "warn" : ""}">
+        <span class="stat-label">Caución en USD</span>
+        <span class="stat-value">USD ${fmtMoney(totalCaucionUSD, 0)}</span>
+        <span class="stat-sub">${enCaucionUSD.length} cuenta(s)</span>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Cuentas con caución tomada</h3>
+      ${filasCaucion ? `
+        <table>
+          <thead><tr><th>Comitente</th><th>Nombre</th><th>Cta cte $</th><th>Cta cte USD</th></tr></thead>
+          <tbody>${filasCaucion}</tbody>
+        </table>
+      ` : `<p class="muted">Ninguna cuenta tiene caución tomada.</p>`}
+    </div>
+  `;
+}
+
+// ---------- Posiciones (vista por comitente) ----------
+
+function renderPosiciones(cli) {
+  const el = document.getElementById("view-posiciones");
+  const totalResultadosPesos = (cli.detallePesos || []).reduce((a, p) => a + calcPosicion(p).resultados, 0);
+  const totalResultadosDolares = (cli.detalleDolares || []).reduce((a, p) => a + calcPosicion(p).resultados, 0);
+  const totalRealizado = (cli.ganancias || []).reduce((a, g) => a + (parseFloat(g.monto) || 0), 0);
+
+  el.innerHTML = `
+    <div class="stats-row">
+      <div class="stat-card">
+        <span class="stat-label">Total Portafolio</span>
+        <span class="stat-value">$ ${fmtMoney(cli.totalPortfolio)}</span>
+      </div>
+      <div class="stat-card ${totalResultadosPesos < 0 ? "warn" : ""}">
+        <span class="stat-label">P&L no realizado ($)</span>
+        <span class="stat-value ${totalResultadosPesos < 0 ? "neg" : "pos"}">$ ${fmtMoney(totalResultadosPesos)}</span>
+      </div>
+      <div class="stat-card ${totalResultadosDolares < 0 ? "warn" : ""}">
+        <span class="stat-label">P&L no realizado (USD)</span>
+        <span class="stat-value ${totalResultadosDolares < 0 ? "neg" : "pos"}">USD ${fmtMoney(totalResultadosDolares)}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">P&L realizado</span>
+        <span class="stat-value ${totalRealizado < 0 ? "neg" : "pos"}">$ ${fmtMoney(totalRealizado)}</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Resumen del comitente</h3>
       <div class="row"><span>Portafolio en pesos</span><b>$ ${fmtMoney(cli.pesos.valor)}</b></div>
       <div class="row ${cli.pesos.cuentaCorriente < 0 ? "neg" : "pos"}">
         <span>Cuenta corriente pesos</span><b>$ ${fmtMoney(cli.pesos.cuentaCorriente)}</b>
@@ -124,13 +225,37 @@ function renderResumen(cli) {
         <span>Cuenta corriente dólares</span><b>USD ${fmtMoney(cli.dolares.cuentaCorrienteUSD)} · $ ${fmtMoney(cli.dolares.cuentaCorrienteARS)}</b>
       </div>
       <div class="row"><span>T. Cambio</span><b>${fmtMoney(cli.tc)}</b></div>
+      ${cli.alertas ? `<div class="alerta">${cli.alertas.map(a => `⚠️ ${a}`).join("<br>")}</div>` : ""}
     </div>
-    ${cli.alertas ? `<div class="alerta">${cli.alertas.map(a => `⚠️ ${a}`).join("<br>")}</div>` : ""}
+
+    ${(cli.pesos.cuentaCorriente < 0 || cli.dolares.cuentaCorrienteUSD < 0) ? `
+      <div class="panel"><h3>Caución de esta cuenta</h3><div id="caucionInline"></div></div>
+    ` : ""}
+
+    <div class="panel">
+      <h3>Detalle pesos</h3>
+      <div class="table-wrap" id="tablaPesos"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Detalle dólares</h3>
+      <div class="table-wrap" id="tablaDolares"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Ganancias / pérdidas realizadas</h3>
+      <div class="table-wrap" id="ganancias"></div>
+    </div>
   `;
+
+  if (document.getElementById("caucionInline")) renderCaucionCliente(cli, "caucionInline");
+  renderDetalle(cli, "detallePesos", "tablaPesos", false);
+  renderDetalle(cli, "detalleDolares", "tablaDolares", true);
+  renderGanancias(cli);
 }
 
-function renderCaucion(cli) {
-  const el = document.getElementById("caucion");
+function renderCaucionCliente(cli, elId) {
+  const el = document.getElementById(elId);
   const bloques = [];
 
   if (cli.pesos.cuentaCorriente < 0) {
@@ -167,7 +292,7 @@ function renderCaucion(cli) {
     `);
   }
 
-  el.innerHTML = bloques.length ? bloques.join("") : `<p class="muted">Esta cuenta no tiene caución tomada.</p>`;
+  el.innerHTML = `<div class="caucion-grid">${bloques.join("")}</div>`;
 }
 
 function renderDetalle(cli, key, tablaId, esDolar) {
@@ -299,8 +424,193 @@ function borrarGanancia(id, idx) {
   render();
 }
 
+// ---------- Rendimiento ----------
+
+let periodoRendimiento = "hoy";
+
+function setPeriodoRendimiento(p) {
+  periodoRendimiento = p;
+  render();
+}
+
+function renderRendimiento(cli) {
+  const el = document.getElementById("view-rendimiento");
+  const periodos = [
+    { key: "hoy", label: "Hoy" },
+    { key: "semana", label: "Semana" },
+    { key: "mes", label: "Mes" },
+    { key: "año", label: "Año" },
+    { key: "total", label: "Total" },
+  ];
+  const tabsHtml = periodos.map(p => `
+    <button class="periodo-btn ${periodoRendimiento === p.key ? "active" : ""}" onclick="setPeriodoRendimiento('${p.key}')">${p.label}</button>
+  `).join("");
+
+  if (periodoRendimiento === "hoy") {
+    const resultadoDiaPesos = (cli.detallePesos || []).reduce((a, p) => a + calcPosicion(p).resultadoDia, 0);
+    const resultadoDiaDolares = (cli.detalleDolares || []).reduce((a, p) => a + calcPosicion(p).resultadoDia, 0);
+    const realizadoHoy = (cli.ganancias || []).filter(g => g.fecha === todayStr()).reduce((a, g) => a + (parseFloat(g.monto) || 0), 0);
+    el.innerHTML = `
+      <div class="periodo-tabs">${tabsHtml}</div>
+      <div class="stats-row">
+        <div class="stat-card ${resultadoDiaPesos < 0 ? "warn" : ""}">
+          <span class="stat-label">Resultado del día ($)</span>
+          <span class="stat-value ${resultadoDiaPesos < 0 ? "neg" : "pos"}">$ ${fmtMoney(resultadoDiaPesos)}</span>
+        </div>
+        <div class="stat-card ${resultadoDiaDolares < 0 ? "warn" : ""}">
+          <span class="stat-label">Resultado del día (USD)</span>
+          <span class="stat-value ${resultadoDiaDolares < 0 ? "neg" : "pos"}">USD ${fmtMoney(resultadoDiaDolares)}</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Realizado hoy</span>
+          <span class="stat-value ${realizadoHoy < 0 ? "neg" : "pos"}">$ ${fmtMoney(realizadoHoy)}</span>
+        </div>
+      </div>
+      <p class="muted">Basado en el precio vs. precio anterior cargado para cada posición.</p>
+    `;
+  } else {
+    el.innerHTML = `
+      <div class="periodo-tabs">${tabsHtml}</div>
+      <div class="panel">
+        <p class="muted">Todavía no hay histórico diario cargado para armar este período. A medida que vayamos
+        procesando los archivos de operaciones día a día, esta vista se va a ir completando sola.</p>
+      </div>
+    `;
+  }
+}
+
+// ---------- Cauciones (vista global) ----------
+
+function renderCaucionesGlobal(clientes) {
+  const el = document.getElementById("view-cauciones");
+  const filas = [];
+
+  clientes.forEach(c => {
+    if (c.pesos.cuentaCorriente < 0) {
+      const fecha = c.caucion.fechaInicioPesos || todayStr();
+      const { dias, interes } = calcInteres(c.pesos.cuentaCorriente, TASA_TNA_ARS, fecha);
+      filas.push(`
+        <tr>
+          <td>${c.id}</td><td>${c.nombre}</td><td>Pesos (24% TNA)</td>
+          <td class="neg">$ ${fmtMoney(c.pesos.cuentaCorriente)}</td>
+          <td><input type="date" value="${fecha}" onchange="updateClienteField('${c.id}','caucion.fechaInicioPesos', this.value); render();"></td>
+          <td>${dias}</td>
+          <td>$ ${fmtMoney(interes)}</td>
+          <td><b>$ ${fmtMoney(Math.abs(c.pesos.cuentaCorriente) + interes)}</b></td>
+        </tr>
+      `);
+    }
+    if (c.dolares.cuentaCorrienteUSD < 0) {
+      const fecha = c.caucion.fechaInicioUSD || todayStr();
+      const { dias, interes } = calcInteres(c.dolares.cuentaCorrienteUSD, TASA_TNA_USD, fecha);
+      filas.push(`
+        <tr>
+          <td>${c.id}</td><td>${c.nombre}</td><td>Dólares (2% TNA)</td>
+          <td class="neg">USD ${fmtMoney(c.dolares.cuentaCorrienteUSD)}</td>
+          <td><input type="date" value="${fecha}" onchange="updateClienteField('${c.id}','caucion.fechaInicioUSD', this.value); render();"></td>
+          <td>${dias}</td>
+          <td>USD ${fmtMoney(interes)}</td>
+          <td><b>USD ${fmtMoney(Math.abs(c.dolares.cuentaCorrienteUSD) + interes)}</b></td>
+        </tr>
+      `);
+    }
+  });
+
+  el.innerHTML = `
+    <div class="panel">
+      <h3>Todas las cauciones activas</h3>
+      ${filas.length ? `
+        <div class="table-wrap">
+        <table>
+          <thead><tr><th>Comitente</th><th>Nombre</th><th>Moneda</th><th>Saldo</th><th>Fecha inicio</th><th>Días</th><th>Interés devengado</th><th>Total adeudado hoy</th></tr></thead>
+          <tbody>${filas.join("")}</tbody>
+        </table>
+        </div>
+      ` : `<p class="muted">Ninguna cuenta tiene caución tomada.</p>`}
+    </div>
+  `;
+}
+
+// ---------- Carry Trade ----------
+
+function renderCarryTrade(clientes) {
+  const el = document.getElementById("view-carry");
+  const bloques = clientes.map(cli => {
+    const letras = (cli.detallePesos || [])
+      .map((pos, idx) => ({ pos, idx }))
+      .filter(({ pos }) => BONOS.includes(pos.t));
+    if (!letras.length) return "";
+
+    const mepActual = cli.mepActualCarry !== undefined ? cli.mepActualCarry : cli.tc;
+
+    const filas = letras.map(({ pos, idx }) => {
+      const { montoPesos, valorActualPesos, usdInvertido, valorActualUSD, rendUSD, mepBreakeven } = calcCarry(pos, pos.mepEntrada, mepActual);
+      return `
+        <tr>
+          <td>${pos.t}</td>
+          <td>${pos.n}</td>
+          <td>$ ${fmtMoney(montoPesos)}</td>
+          <td><input type="number" step="any" placeholder="MEP entrada" value="${pos.mepEntrada || ""}"
+              onchange="editarMepEntrada('${cli.id}',${idx},this.value)"></td>
+          <td>${usdInvertido !== null ? "USD " + fmtMoney(usdInvertido) : "-"}</td>
+          <td>$ ${fmtMoney(valorActualPesos)}</td>
+          <td>${valorActualUSD !== null ? "USD " + fmtMoney(valorActualUSD) : "-"}</td>
+          <td class="${rendUSD !== null && rendUSD < 0 ? "neg" : rendUSD !== null ? "pos" : ""}">${rendUSD !== null ? fmtPct(rendUSD) : "-"}</td>
+          <td>${mepBreakeven !== null ? fmtMoney(mepBreakeven) : "-"}</td>
+        </tr>
+      `;
+    }).join("");
+
+    return `
+      <div class="panel">
+        <h3>${cli.id} ${cli.nombre}</h3>
+        <div class="row" style="max-width:320px">
+          <span>MEP actual (para valuar hoy)</span>
+          <input type="number" step="any" value="${mepActual || ""}" onchange="editarMepActual('${cli.id}', this.value)">
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Ticker</th><th>Nombre</th><th>Monto $ invertido</th><th>MEP entrada</th><th>USD invertidos</th>
+            <th>Valor actual $</th><th>Valor actual USD</th><th>Rend. USD</th><th>MEP breakeven</th></tr></thead>
+            <tbody>${filas}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  el.innerHTML = `
+    <p class="muted" style="margin-bottom:16px">
+      Cargá el dólar MEP al que se vendió para financiar cada letra ("MEP entrada"). El "MEP breakeven" es el tipo
+      de cambio al que el rendimiento en dólares sería exactamente 0% — si el MEP real sube por encima de eso,
+      el carry trade da pérdida en dólares aunque gane en pesos.
+    </p>
+    ${bloques || `<p class="muted">Ningún comitente tiene letras/bonos en pesos cargados.</p>`}
+  `;
+}
+
+function editarMepEntrada(id, idx, valor) {
+  const cli = getClientes().find(c => c.id === id);
+  cli.detallePesos[idx].mepEntrada = parseFloat(valor.toString().replace(",", ".")) || undefined;
+  const overrides = loadOverrides();
+  if (!overrides[id]) overrides[id] = {};
+  overrides[id].detallePesos = cli.detallePesos;
+  saveOverrides(overrides);
+  render();
+}
+
+function editarMepActual(id, valor) {
+  const overrides = loadOverrides();
+  if (!overrides[id]) overrides[id] = {};
+  overrides[id].mepActualCarry = parseFloat(valor.toString().replace(",", ".")) || undefined;
+  saveOverrides(overrides);
+  render();
+}
+
+// ---------- Comitentes (vista general) ----------
+
 function renderVistaGeneral(clientes) {
-  const el = document.getElementById("vistaGeneral");
+  const el = document.getElementById("view-comitentes");
   const filas = clientes.map(c => {
     const enCaucionPesos = c.pesos.cuentaCorriente < 0;
     const enCaucionUSD = c.dolares.cuentaCorrienteUSD < 0;
@@ -319,10 +629,14 @@ function renderVistaGeneral(clientes) {
     `;
   }).join("");
   el.innerHTML = `
-    <table>
-      <thead><tr><th>Comitente</th><th>Nombre</th><th>Total portafolio</th><th>Cta cte $</th><th>Cta cte USD</th><th>Estado</th></tr></thead>
-      <tbody>${filas}</tbody>
-    </table>
+    <div class="panel">
+      <div class="table-wrap">
+      <table>
+        <thead><tr><th>Comitente</th><th>Nombre</th><th>Total portafolio</th><th>Cta cte $</th><th>Cta cte USD</th><th>Estado</th></tr></thead>
+        <tbody>${filas}</tbody>
+      </table>
+      </div>
+    </div>
   `;
 }
 
@@ -347,7 +661,7 @@ function exportarEstado() {
 function checkLogin() {
   if (sessionStorage.getItem("logged_in") === "1") {
     document.getElementById("login").style.display = "none";
-    document.getElementById("app").style.display = "block";
+    document.getElementById("app").style.display = "flex";
     init();
   }
 }
@@ -357,7 +671,7 @@ function doLogin() {
   if (pass === PASSWORD) {
     sessionStorage.setItem("logged_in", "1");
     document.getElementById("login").style.display = "none";
-    document.getElementById("app").style.display = "block";
+    document.getElementById("app").style.display = "flex";
     init();
   } else {
     document.getElementById("loginError").textContent = "Contraseña incorrecta";
@@ -370,12 +684,15 @@ function logout() {
 }
 
 function init() {
+  document.querySelectorAll(".navbtn").forEach(b => {
+    b.addEventListener("click", () => irAVista(b.dataset.view));
+  });
   const sel = document.getElementById("comitenteSelect");
   sel.addEventListener("change", render);
   document.getElementById("btnExportar").addEventListener("click", exportarEstado);
   document.getElementById("btnLogout").addEventListener("click", logout);
   document.getElementById("fecha").textContent = new Date().toLocaleDateString("es-AR", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-  render();
+  irAVista("dashboard");
 }
 
 document.addEventListener("DOMContentLoaded", () => {
