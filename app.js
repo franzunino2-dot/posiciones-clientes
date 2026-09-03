@@ -1,7 +1,7 @@
 // Lógica de la app: cálculo de posiciones, cauciones y persistencia local.
 
 const LS_KEY = "posiciones_clientes_v1";
-const PASSWORD = "equanima2026"; // cambiar acá si querés otra clave
+const PASSWORD = "091218"; // cambiar acá si querés otra clave
 
 function fmtMoney(n, decimals = 2) {
   if (n === null || n === undefined || isNaN(n)) return "-";
