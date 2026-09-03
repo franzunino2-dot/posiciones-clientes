@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Posiciones de Clientes — Equanima</title>
+<style>
+  :root {
+    --bg: #1c2230;
+    --bg-card: #252d3d;
+    --bg-card2: #2c3546;
+    --border: #3a4356;
+    --text: #eef1f6;
+    --muted: #9aa4b8;
+    --accent: #4f7cff;
+    --green: #3ecf8e;
+    --red: #ff5c5c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    background: #14181f;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  header h1 { font-size: 18px; margin: 0; }
+  header .controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  select, input, button {
+    background: var(--bg-card2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 14px;
+  }
+  button { cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  #fecha { color: var(--muted); font-size: 13px; }
+
+  main { padding: 20px 24px; max-width: 1200px; margin: 0 auto; }
+  section { margin-bottom: 28px; }
+  h2 { font-size: 16px; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 12px; }
+  h3 { font-size: 15px; margin: 0 0 10px; }
+  h4 { margin: 0 0 10px; font-size: 14px; }
+
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    gap: 12px;
+    align-items: center;
+  }
+  .row:last-child { border-bottom: none; }
+  .row.neg b { color: var(--red); }
+  .row.pos b { color: var(--text); }
+  .neg { color: var(--red); }
+  .pos { color: var(--green); }
+  .muted { color: var(--muted); }
+  .alerta {
+    margin-top: 10px;
+    background: rgba(255,92,92,0.1);
+    border: 1px solid var(--red);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+
+  #caucion { display: flex; gap: 16px; flex-wrap: wrap; }
+  .caucion-box {
+    background: var(--bg-card);
+    border: 1px solid var(--red);
+    border-radius: 10px;
+    padding: 16px;
+    flex: 1;
+    min-width: 260px;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    text-align: left;
+    background: var(--bg-card2);
+    padding: 8px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  tbody td, tfoot td {
+    padding: 6px 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  tfoot td { font-weight: bold; border-top: 1px solid var(--border); }
+  tbody input {
+    width: 90px;
+    padding: 4px 6px;
+    font-size: 13px;
+  }
+  .table-wrap { overflow-x: auto; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+
+  #login {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    flex-direction: column;
+    gap: 12px;
+  }
+  #login .box {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 280px;
+  }
+  #loginError { color: var(--red); font-size: 13px; min-height: 16px; }
+  #app { display: none; }
+  .fila-caucion td:nth-child(2) { color: var(--red); }
+</style>
+</head>
+<body>
+
+<div id="login">
+  <div class="box">
+    <h3>Posiciones de Clientes</h3>
+    <input type="password" id="passInput" placeholder="Contraseña">
+    <button id="btnLogin">Ingresar</button>
+    <div id="loginError"></div>
+  </div>
+</div>
+
+<div id="app">
+  <header>
+    <h1>Posiciones de Clientes — Equanima</h1>
+    <div class="controls">
+      <span id="fecha"></span>
+      <select id="comitenteSelect"></select>
+      <button id="btnExportar">Exportar estado (JSON)</button>
+      <button id="btnLogout">Salir</button>
+    </div>
+  </header>
+
+  <main>
+    <section>
+      <h2>Resumen del comitente</h2>
+      <div id="resumen"></div>
+    </section>
+
+    <section>
+      <h2>Caución / financiamiento</h2>
+      <div id="caucion"></div>
+    </section>
+
+    <section>
+      <h2>Detalle pesos</h2>
+      <div class="table-wrap" id="tablaPesos"></div>
+    </section>
+
+    <section>
+      <h2>Detalle dólares</h2>
+      <div class="table-wrap" id="tablaDolares"></div>
+    </section>
+
+    <section>
+      <h2>Ganancias / pérdidas realizadas</h2>
+      <div class="table-wrap" id="ganancias"></div>
+    </section>
+
+    <section>
+      <h2>Vista general — todos los comitentes</h2>
+      <div class="table-wrap" id="vistaGeneral"></div>
+    </section>
+  </main>
+</div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
