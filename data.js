@@ -41,8 +41,7 @@ const CLIENTES = [
     ],
     detalleDolares: [],
     caucion: { fechaInicioPesos: null, fechaInicioUSD: null },
-    ganancias: [],
-    alertas: ["TSLA aparecía con cantidad vacía y resultado inconsistente en la captura — no se cargó, revisar operación de venta."]
+    ganancias: []
   },
   {
     id: "1239", nombre: "ZUNINO DIAZ FRANC...", tc: 1534.30,
@@ -63,8 +62,7 @@ const CLIENTES = [
       { t:"PLC4O", n:"PLUSPETROL S A/NT 20320529 UNSEC R", c:2000, p:110.311, co:110.569, pa:110.850 }
     ],
     caucion: { fechaInicioPesos: null, fechaInicioUSD: null },
-    ganancias: [],
-    alertas: ["TSLA aparecía con cantidad vacía y resultado inconsistente en la captura — no se cargó, revisar operación de venta."]
+    ganancias: []
   },
   {
     id: "1323", nombre: "QUINTANA LAMBOIS...", tc: 1534.30,
@@ -147,8 +145,7 @@ const CLIENTES = [
     ],
     detalleDolares: [],
     caucion: { fechaInicioPesos: null, fechaInicioUSD: null },
-    ganancias: [],
-    alertas: ["TSLA aparecía con cantidad vacía y resultado inconsistente en la captura — no se cargó, revisar operación de venta."]
+    ganancias: []
   },
   {
     id: "1483", nombre: "TORTORELLI, MARIA...", tc: 1534.30,
