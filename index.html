@@ -147,6 +147,14 @@
   .two-col { display: flex; gap: 16px; flex-wrap: wrap; }
   .two-col > .panel { flex: 1; min-width: 280px; }
 
+  .barchart { display: flex; align-items: flex-end; gap: 4px; height: 180px; overflow-x: auto; padding-top: 10px; }
+  .barcol { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; flex: 0 0 auto; width: 28px; height: 100%; }
+  .barwrap { flex: 1; display: flex; align-items: flex-end; width: 100%; }
+  .bar { width: 100%; border-radius: 2px 2px 0 0; }
+  .pos-bar { background: var(--green); }
+  .neg-bar { background: var(--red); }
+  .barlabel { font-size: 10px; color: var(--muted); margin-top: 4px; white-space: nowrap; }
+
   .periodo-tabs, .moneda-toggle { display: flex; gap: 6px; margin-bottom: 16px; }
   .periodo-btn { background: var(--bg-card); }
   .periodo-btn.active { background: var(--accent); color: #06140d; border-color: var(--accent); font-weight: 600; }

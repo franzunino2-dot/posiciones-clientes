@@ -584,17 +584,82 @@ function renderRendimiento(cli) {
           <span class="stat-value ${realizadoHoy < 0 ? "neg" : "pos"}">$ ${fmtMoney(realizadoHoy)}</span>
         </div>
       </div>
-      <p class="muted">Basado en el precio vs. precio anterior cargado para cada posición.</p>
+      <p class="muted">Basado en el precio vs. precio anterior cargado para cada posición, más lo realizado hoy (ganancias/pérdidas cerradas).</p>
     `;
   } else {
-    el.innerHTML = `
-      <div class="periodo-tabs">${tabsHtml}</div>
-      <div class="panel">
-        <p class="muted">Todavía no hay histórico diario cargado para armar este período. A medida que vayamos
-        procesando los archivos de operaciones día a día, esta vista se va a ir completando sola.</p>
+    renderRendimientoPeriodo(cli, periodoRendimiento, el, tabsHtml);
+  }
+}
+
+function getRangoPeriodo(periodo) {
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  let inicio;
+  if (periodo === "semana") {
+    inicio = new Date(hoy); inicio.setDate(hoy.getDate() - 6);
+  } else if (periodo === "mes") {
+    inicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  } else if (periodo === "año") {
+    inicio = new Date(hoy.getFullYear(), 0, 1);
+  } else {
+    inicio = null; // total
+  }
+  return { inicio, fin: hoy };
+}
+
+function renderRendimientoPeriodo(cli, periodo, el, tabsHtml) {
+  const { inicio } = getRangoPeriodo(periodo);
+  const todas = (cli.ganancias || []).filter(g => (g.moneda || "ARS") === "ARS");
+  const enRango = todas.filter(g => !inicio || new Date(g.fecha + "T00:00:00") >= inicio);
+
+  const totalPnl = enRango.reduce((a, g) => a + ((parseFloat(g.ventaRescate) || 0) - (parseFloat(g.costo) || 0)), 0);
+  const totalCosto = enRango.reduce((a, g) => a + (parseFloat(g.costo) || 0), 0);
+  const variacionPct = totalCosto ? (totalPnl / totalCosto) * 100 : null;
+
+  // Agrupar para el gráfico: por día si semana/mes, por mes si año/total
+  const porDia = (periodo === "semana" || periodo === "mes");
+  const grupos = {};
+  enRango.forEach(g => {
+    const key = porDia ? g.fecha : g.fecha.slice(0, 7);
+    grupos[key] = (grupos[key] || 0) + ((parseFloat(g.ventaRescate) || 0) - (parseFloat(g.costo) || 0));
+  });
+  const claves = Object.keys(grupos).sort();
+  const maxAbs = Math.max(1, ...claves.map(k => Math.abs(grupos[k])));
+
+  const barras = claves.map(k => {
+    const v = grupos[k];
+    const alturaPct = Math.max(4, (Math.abs(v) / maxAbs) * 100);
+    const label = porDia ? k.slice(5) : k;
+    return `
+      <div class="barcol" title="${label}: $ ${fmtMoney(v)}">
+        <div class="barwrap"><div class="bar ${v < 0 ? "neg-bar" : "pos-bar"}" style="height:${alturaPct}%"></div></div>
+        <span class="barlabel">${label}</span>
       </div>
     `;
-  }
+  }).join("");
+
+  el.innerHTML = `
+    <div class="periodo-tabs">${tabsHtml}</div>
+    <div class="stats-row">
+      <div class="stat-card ${totalPnl < 0 ? "warn" : ""}">
+        <span class="stat-label">Ganancia realizada del período</span>
+        <span class="stat-value ${totalPnl < 0 ? "neg" : "pos"}">$ ${fmtMoney(totalPnl)}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Variación %</span>
+        <span class="stat-value ${variacionPct !== null && variacionPct < 0 ? "neg" : "pos"}">${variacionPct !== null ? fmtPct(variacionPct) : "-"}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Operaciones cerradas</span>
+        <span class="stat-value">${enRango.length}</span>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Rendimiento del período ${porDia ? "· por día" : "· por mes"}</h3>
+      ${claves.length ? `<div class="barchart">${barras}</div>` : `<p class="muted">No hay ganancias realizadas registradas en este período.</p>`}
+    </div>
+    <p class="muted">Solo incluye ganancias/pérdidas realizadas (posiciones cerradas) en pesos. No incluye P&L no realizado de posiciones abiertas.</p>
+  `;
 }
 
 // ---------- Cauciones (vista global) ----------
