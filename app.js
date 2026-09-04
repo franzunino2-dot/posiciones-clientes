@@ -667,6 +667,8 @@ function renderCarryTrade(clientes) {
         <tr>
           <td>${pos.t}</td>
           <td>${pos.n}</td>
+          <td><input type="number" step="any" value="${pos.p}" style="width:100px"
+              onchange="editarPosicion('${cli.id}','detallePesos',${idx},'p',this.value)"></td>
           <td>$ ${fmtMoney(montoPesos)}</td>
           <td><input type="number" step="any" placeholder="MEP entrada" value="${pos.mepEntrada || ""}"
               onchange="editarMepEntrada('${cli.id}',${idx},this.value)"></td>
@@ -688,7 +690,7 @@ function renderCarryTrade(clientes) {
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Ticker</th><th>Nombre</th><th>Monto $ invertido</th><th>MEP entrada</th><th>USD invertidos</th>
+            <thead><tr><th>Ticker</th><th>Nombre</th><th>Precio actual</th><th>Monto $ invertido</th><th>MEP entrada</th><th>USD invertidos</th>
             <th>Valor actual $</th><th>Valor actual USD</th><th>Rend. USD</th><th>MEP breakeven</th></tr></thead>
             <tbody>${filas}</tbody>
           </table>
