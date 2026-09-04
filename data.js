@@ -37,11 +37,13 @@ const CLIENTES = [
       { t:"GGAL", n:"GGAL - GRUPO FIN.GALICIA", c:30000, p:7055.000, co:7428.418, pa:7170.000 },
       { t:"GOOGL", n:"GOOGL - CEDEAR ALPHABET INC", c:23000, p:9365.000, co:9752.675, pa:9285.000 },
       { t:"INTC", n:"INTC CEDEAR INTEL CO.", c:10000, p:28700.000, co:32939.130, pa:28640.000 },
-      { t:"NU", n:"CEDEAR NU HOLDINGS LTD/CAYMAN ISLANDS", c:15000, p:12210.000, co:9272.068, pa:12200.000 }
+      { t:"NU", n:"CEDEAR NU HOLDINGS LTD/CAYMAN ISLANDS", c:15000, p:12210.000, co:9272.068, pa:12200.000 },
+      { t:"WMT", n:"WMT CEDEAR WAL-MART STORES", c:5000, p:9640.000, co:9212.2398, pa:9410.000 }
     ],
     detalleDolares: [],
     caucion: { fechaInicioPesos: null, fechaInicioUSD: null },
-    ganancias: []
+    ganancias: [],
+    alertas: ["Detalle Pesos incompleto: el subtotal reportado ($1.528.556.360) no cierra con las filas cargadas — falta al menos una posición más además de WMT (agregado el 3/9 desde el ledger de Gallo). Pedir captura completa de Detalle Pesos."]
   },
   {
     id: "1239", nombre: "ZUNINO DIAZ FRANC...", tc: 1534.30,
@@ -62,7 +64,9 @@ const CLIENTES = [
       { t:"PLC4O", n:"PLUSPETROL S A/NT 20320529 UNSEC R", c:2000, p:110.311, co:110.569, pa:110.850 }
     ],
     caucion: { fechaInicioPesos: null, fechaInicioUSD: null },
-    ganancias: []
+    ganancias: [
+      { fecha: "2026-09-02", ticker: "NU", cantidad: 30000, costo: 325389922.50, ventaRescate: 364216458.00, moneda: "ARS" }
+    ]
   },
   {
     id: "1323", nombre: "QUINTANA LAMBOIS...", tc: 1534.30,
