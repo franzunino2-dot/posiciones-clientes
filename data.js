@@ -9,18 +9,18 @@ const BONOS = ["T31Y7","TZXS8","T15E7","S3O6","GD30","GN47O","MGCMO","MGCNO","MG
 
 const CLIENTES = [
   {
-    id: "1237", nombre: "ZUNINO DIAZ GUIDO", tc: 1534.30,
-    totalPortfolio: 2094316191.83,
-    pesos: { valor: 2828574530.00, cuentaCorriente: -106576909.64 },
-    dolares: { valorUSD: 0, valorARS: 0, cuentaCorrienteUSD: -409098.70, cuentaCorrienteARS: -627681428.53 },
+    id: "1237", nombre: "ZUNINO DIAZ GUIDO", tc: 1525.39,
+    totalPortfolio: 2099469784.11,
+    pesos: { valor: 2743179200.00, cuentaCorriente: -19452592.77 },
+    dolares: { valorUSD: 0, valorARS: 0, cuentaCorrienteUSD: -409243.16, cuentaCorrienteARS: -624256823.12 },
     detallePesos: [
-      { t:"CVH", n:"CABLEVISION HOLDING S.A.", c:160000, p:9420.000, co:4564.385, pa:9450.000 },
-      { t:"GCLA", n:"GRUPO CLARIN", c:90000, p:3750.000, co:3129.946, pa:3810.000 },
-      { t:"GGAL", n:"GGAL - GRUPO FIN.GALICIA", c:25000, p:7055.000, co:7633.428, pa:7170.000 },
-      { t:"GOOGL", n:"GOOGL - CEDEAR ALPHABET INC", c:15000, p:9365.000, co:9526.331, pa:9285.000 },
-      { t:"NU", n:"CEDEAR NU HOLDINGS LTD/CAYMAN ISLANDS", c:25993, p:12210.000, co:10850.180, pa:12200.000 },
-      { t:"T31Y7", n:"BONO TESORO NACIONAL CAPITALIZ", c:90000000, p:125.500, co:124.537, pa:125.250 },
-      { t:"TZXS8", n:"BONO TESORO NACIONAL CERO CUPO", c:250000000, p:94.680, co:86.238, pa:94.480 }
+      { t:"CVH", n:"CABLEVISION HOLDING S.A.", c:160000, p:9390.000, co:4564.385, pa:9450.000 },
+      { t:"GCLA", n:"GRUPO CLARIN", c:90000, p:3815.000, co:3139.946, pa:3750.000 },
+      { t:"GGAL", n:"GGAL - GRUPO FIN.GALICIA", c:25000, p:6940.000, co:7633.428, pa:7005.000 },
+      { t:"GOOGL", n:"GOOGL - CEDEAR ALPHABET INC", c:20000, p:9395.000, co:9465.351, pa:9270.000 },
+      { t:"NU", n:"CEDEAR NU HOLDINGS LTD/CAYMAN ISLANDS", c:15000, p:12280.000, co:10788.179, pa:12160.000 },
+      { t:"T31Y7", n:"BONO TESORO NACIONAL CAPITALIZ", c:90000000, p:125.838, co:124.537, pa:125.700 },
+      { t:"TZXS8", n:"BONO TESORO NACIONAL CERO CUPO", c:250000000, p:95.430, co:86.238, pa:95.490 }
     ],
     detalleDolares: [],
     caucion: { fechaInicioPesos: null, fechaInicioUSD: null },
@@ -73,20 +73,27 @@ const CLIENTES = [
       {"fecha":"2026-09-02","ticker":"NU","cantidad":1956,"costo":21711936.45,"ventaRescate":23805451.06,"moneda":"ARS"}]
   },
   {
-    id: "1238", nombre: "ZUNINO GABRIEL JU...", tc: 1534.30,
-    totalPortfolio: 2255917445.08,
-    pesos: { valor: 1528556360.00, cuentaCorriente: -91022442.90 },
-    dolares: { valorUSD: 948931.90, valorARS: 1455949213.65, cuentaCorrienteUSD: -415540.88, cuentaCorrienteARS: -637565685.67 },
+    id: "1238", nombre: "ZUNINO GABRIEL JU...", tc: 1525.39,
+    totalPortfolio: 2282541693.18,
+    pesos: { valor: 1718185340.00, cuentaCorriente: -253062533.50 },
+    dolares: { valorUSD: 951561.71, valorARS: 1451505970.40, cuentaCorrienteUSD: -415687.57, cuentaCorrienteARS: -634087083.72 },
     detallePesos: [
-      { t:"CVH", n:"CABLEVISION HOLDING S.A.", c:4698, p:9420.000, co:6714.339, pa:9450.000 },
-      { t:"GCLA", n:"GRUPO CLARIN", c:13776, p:3750.000, co:3129.947, pa:3810.000 },
-      { t:"GGAL", n:"GGAL - GRUPO FIN.GALICIA", c:30000, p:7055.000, co:7428.418, pa:7170.000 },
-      { t:"GOOGL", n:"GOOGL - CEDEAR ALPHABET INC", c:23000, p:9365.000, co:9752.675, pa:9285.000 },
-      { t:"INTC", n:"INTC CEDEAR INTEL CO.", c:10000, p:28700.000, co:32939.130, pa:28640.000 },
-      { t:"NU", n:"CEDEAR NU HOLDINGS LTD/CAYMAN ISLANDS", c:15000, p:12210.000, co:9272.068, pa:12200.000 },
-      { t:"WMT", n:"WMT CEDEAR WAL-MART STORES", c:5000, p:9640.000, co:9212.2398, pa:9410.000 }
+      { t:"CVH", n:"CABLEVISION HOLDING S.A.", c:4698, p:9390.000, co:6714.339, pa:9450.000 },
+      { t:"GCLA", n:"GRUPO CLARIN", c:13776, p:3815.000, co:3129.947, pa:3750.000 },
+      { t:"GGAL", n:"GGAL - GRUPO FIN.GALICIA", c:30000, p:6945.000, co:7428.418, pa:7005.000 },
+      { t:"GOOGL", n:"GOOGL - CEDEAR ALPHABET INC", c:23000, p:9395.000, co:9752.675, pa:9270.000 },
+      { t:"INTC", n:"INTC CEDEAR INTEL CO.", c:10000, p:30600.000, co:32939.130, pa:30380.000 },
+      { t:"NU", n:"CEDEAR NU HOLDINGS LTD/CAYMAN ISLANDS", c:15000, p:12270.000, co:9272.068, pa:12160.000 },
+      { t:"WMT", n:"WMT CEDEAR WAL-MART STORES", c:5000, p:9580.000, co:9212.2398, pa:9440.000 },
+      { t:"BACGO", n:"O N BANCO MACRO S A 8% VTO.23/", c:294000, p:1658.10, co:1474.13061, pa:1642.80 },
+      { t:"NBIS", n:"CEDEAR NEBIUS GROUP N.V.", c:12848, p:13360.000, co:12788.657, pa:13220.000 }
     ],
-    detalleDolares: [],
+    detalleDolares: [
+      { t:"GD30", n:"GD30 - BONO ARG U$D STEP UP V09/07/30", c:1869, p:58.214, co:55.116, pa:58.100 },
+      { t:"GN47O", n:"ON GENNEIA CL.47 V18/10/28 U$S", c:400000, p:103.973, co:100.866, pa:103.000 },
+      { t:"MGCMO", n:"MGCMO - ON PAMP ENER 7.95% V10.09.31", c:9000, p:112.168, co:109.716, pa:112.200 },
+      { t:"YM34O", n:"ON YPF 17/01/34", c:481000, p:109.041, co:105.507, pa:109.300 }
+    ],
     caucion: { fechaInicioPesos: null, fechaInicioUSD: null },
     ganancias: [{"fecha":"2026-04-09","ticker":"GGAL","cantidad":3819,"costo":29161103.78,"ventaRescate":26070126.72,"moneda":"ARS"},
       {"fecha":"2026-04-09","ticker":"MELI","cantidad":622,"costo":15375920.27,"ventaRescate":13325915.53,"moneda":"ARS"},
@@ -138,24 +145,24 @@ const CLIENTES = [
       {"fecha":"2026-08-13","ticker":"MU","cantidad":250,"costo":73260639.38,"ventaRescate":76384293.75,"moneda":"ARS"},
       {"fecha":"2026-08-14","ticker":"NU","cantidad":15000,"costo":158792324.82,"ventaRescate":179564400,"moneda":"ARS"},
       {"fecha":"2026-08-31","ticker":"MU","cantidad":400,"costo":120791610,"ventaRescate":120906696,"moneda":"ARS"}],
-    alertas: ["Detalle Pesos incompleto: el subtotal reportado ($1.528.556.360) no cierra con las filas cargadas — falta al menos una posición más además de WMT (agregado el 3/9 desde el ledger de Gallo). Pedir captura completa de Detalle Pesos."]
+    alertas: ["Detalle Dólares puede estar incompleto (la captura se cortó antes del subtotal) — los totales de Portafolio en dólares y Cuenta corriente dólares son correctos igual, vienen del resumen."]
   },
   {
-    id: "1239", nombre: "ZUNINO DIAZ FRANC...", tc: 1534.30,
-    totalPortfolio: 1950247101.96,
-    pesos: { valor: 2671852280.00, cuentaCorriente: -104116969.28 },
-    dolares: { valorUSD: 30714.27, valorARS: 47125001.55, cuentaCorrienteUSD: -433169.42, cuentaCorrienteARS: -664613210.31 },
+    id: "1239", nombre: "ZUNINO DIAZ FRANC...", tc: 1525.39,
+    totalPortfolio: 1988294231.81,
+    pesos: { valor: 2810920760.00, cuentaCorriente: -210514643.41 },
+    dolares: { valorUSD: 32041.04, valorARS: 48875191.56, cuentaCorrienteUSD: -433322.36, cuentaCorrienteARS: -660987076.34 },
     detallePesos: [
-      { t:"CVH", n:"CABLEVISION HOLDING S.A.", c:157884, p:9420.000, co:5216.917, pa:9450.000 },
-      { t:"GCLA", n:"GRUPO CLARIN", c:90000, p:3750.000, co:3129.946, pa:3810.000 },
-      { t:"GGAL", n:"GGAL - GRUPO FIN.GALICIA", c:25000, p:7055.000, co:7325.685, pa:7170.000 },
-      { t:"GOOGL", n:"GOOGL - CEDEAR ALPHABET INC", c:10000, p:9365.000, co:9222.264, pa:9285.000 },
-      { t:"INTC", n:"INTC CEDEAR INTEL CO.", c:13000, p:28700.000, co:33999.002, pa:28640.000 },
-      { t:"MU", n:"CEDEAR MICRON TECHNOLOGY INC", c:200, p:300300.000, co:300641.421, pa:304725.000 }
+      { t:"CVH", n:"CABLEVISION HOLDING S.A.", c:157884, p:9390.000, co:5216.917, pa:9450.000 },
+      { t:"GCLA", n:"GRUPO CLARIN", c:90000, p:3815.000, co:3129.946, pa:3750.000 },
+      { t:"GGAL", n:"GGAL - GRUPO FIN.GALICIA", c:25000, p:6940.000, co:7325.685, pa:7005.000 },
+      { t:"GOOGL", n:"GOOGL - CEDEAR ALPHABET INC", c:20000, p:9395.000, co:9257.349, pa:9270.000 },
+      { t:"INTC", n:"INTC CEDEAR INTEL CO.", c:13000, p:30600.000, co:33999.002, pa:30380.000 },
+      { t:"TSLA", n:"TSLA CEDEAR TESLA, INC", c:6000, p:37640.000, co:37768.118, pa:37460.000 }
     ],
     detalleDolares: [
-      { t:"TSM", n:"CEDEAR TAIWAN SEMICONDUCTOR MANUF.", c:600, p:47.513, co:47.890, pa:48.040 },
-      { t:"PLC4O", n:"PLUSPETROL S A/NT 20320529 UNSEC R", c:2000, p:110.311, co:110.569, pa:110.850 }
+      { t:"TSM", n:"CEDEAR TAIWAN SEMICONDUCTOR MANUF.", c:600, p:49.708, co:47.890, pa:49.620 },
+      { t:"PLC4O", n:"PLUSPETROL S A/NT 20320529 UNSEC R", c:2000, p:110.798, co:110.569, pa:111.000 }
     ],
     caucion: { fechaInicioPesos: null, fechaInicioUSD: null },
     alertas: ["SNDK vendida por completo hoy (varias compras/ventas intradía) — quedó en cantidad 0, se sacó de Detalle Pesos. Ver ganancias realizadas."],
