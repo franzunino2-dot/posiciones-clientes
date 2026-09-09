@@ -107,12 +107,16 @@ function irAVista(vista) {
   vistaActual = vista;
   document.querySelectorAll(".navbtn").forEach(b => b.classList.toggle("active", b.dataset.view === vista));
   document.querySelectorAll(".view").forEach(v => v.style.display = v.id === "view-" + vista ? "block" : "none");
-  document.getElementById("selectorWrap").style.display = VISTAS_CON_SELECTOR.includes(vista) ? "flex" : "none";
+  if (esAdmin()) {
+    document.getElementById("selectorWrap").style.display = VISTAS_CON_SELECTOR.includes(vista) ? "flex" : "none";
+  }
   render();
 }
 
 function render() {
   const clientes = getClientes();
+  // Un cliente (no admin) solo puede ver su propia cuenta, nunca la de otros comitentes.
+  const clientesVisibles = esAdmin() ? clientes : clientes.filter(c => c.id === sesion.comitenteId);
   const sel = document.getElementById("comitenteSelect");
   if (!sel.dataset.built) {
     clientes.forEach(c => {
@@ -124,16 +128,16 @@ function render() {
     sel.dataset.built = "1";
     sel.value = clienteActualId || clientes[0].id;
   }
-  clienteActualId = sel.value;
-  const cli = clientes.find(c => c.id === clienteActualId);
+  clienteActualId = esAdmin() ? sel.value : sesion.comitenteId;
+  const cli = clientesVisibles.find(c => c.id === clienteActualId);
 
-  if (vistaActual === "general") renderDashboard(clientes);
+  if (vistaActual === "general") renderDashboard(clientesVisibles);
   else if (vistaActual === "dashboardCliente") renderDashboardCliente(cli);
   else if (vistaActual === "posiciones") renderPosiciones(cli);
   else if (vistaActual === "rendimiento") renderRendimiento(cli);
-  else if (vistaActual === "cauciones") renderCaucionesGlobal(clientes);
-  else if (vistaActual === "carry") renderCarryTrade(clientes);
-  else if (vistaActual === "comitentes") renderVistaGeneral(clientes);
+  else if (vistaActual === "cauciones") renderCaucionesGlobal(clientesVisibles);
+  else if (vistaActual === "carry") renderCarryTrade(clientesVisibles);
+  else if (vistaActual === "comitentes") renderVistaGeneral(clientesVisibles);
 }
 
 // ---------- Dashboard ----------
@@ -368,7 +372,7 @@ function renderCaucionCliente(cli, elId) {
         <h4>Caución en pesos (24% TNA)</h4>
         <div class="row"><span>Saldo adeudado</span><b>$ ${fmtMoney(cli.pesos.cuentaCorriente)}</b></div>
         <div class="row"><span>Fecha inicio</span>
-          <input type="date" value="${fecha}" onchange="updateClienteField('${cli.id}','caucion.fechaInicioPesos', this.value); render();">
+          ${esAdmin() ? `<input type="date" value="${fecha}" onchange="updateClienteField('${cli.id}','caucion.fechaInicioPesos', this.value); render();">` : `<b>${fecha}</b>`}
         </div>
         <div class="row"><span>Días transcurridos</span><b>${dias}</b></div>
         <div class="row"><span>Interés devengado</span><b>$ ${fmtMoney(interes)}</b></div>
@@ -385,7 +389,7 @@ function renderCaucionCliente(cli, elId) {
         <h4>Caución en dólares (2% TNA)</h4>
         <div class="row"><span>Saldo adeudado</span><b>USD ${fmtMoney(cli.dolares.cuentaCorrienteUSD)}</b></div>
         <div class="row"><span>Fecha inicio</span>
-          <input type="date" value="${fecha}" onchange="updateClienteField('${cli.id}','caucion.fechaInicioUSD', this.value); render();">
+          ${esAdmin() ? `<input type="date" value="${fecha}" onchange="updateClienteField('${cli.id}','caucion.fechaInicioUSD', this.value); render();">` : `<b>${fecha}</b>`}
         </div>
         <div class="row"><span>Días transcurridos</span><b>${dias}</b></div>
         <div class="row"><span>Interés devengado</span><b>USD ${fmtMoney(interes)}</b></div>
@@ -413,14 +417,14 @@ function renderActuales(cli, key, simbolo) {
       <tr>
         <td>${pos.t}<br><span class="muted" style="font-size:11px">${pos.n}</span></td>
         <td>${simbolo} ${fmtMoney(importe)}</td>
-        <td><input type="number" value="${pos.c}" step="any" onchange="editarPosicion('${cli.id}','${key}',${i},'c',this.value)"></td>
-        <td><input type="number" value="${pos.p}" step="any" onchange="editarPosicion('${cli.id}','${key}',${i},'p',this.value)"></td>
-        <td><input type="number" value="${pos.co}" step="any" onchange="editarPosicion('${cli.id}','${key}',${i},'co',this.value)"></td>
+        <td>${esAdmin() ? `<input type="number" value="${pos.c}" step="any" onchange="editarPosicion('${cli.id}','${key}',${i},'c',this.value)">` : fmtMoney(pos.c, 0)}</td>
+        <td>${esAdmin() ? `<input type="number" value="${pos.p}" step="any" onchange="editarPosicion('${cli.id}','${key}',${i},'p',this.value)">` : fmtMoney(pos.p)}</td>
+        <td>${esAdmin() ? `<input type="number" value="${pos.co}" step="any" onchange="editarPosicion('${cli.id}','${key}',${i},'co',this.value)">` : fmtMoney(pos.co)}</td>
         <td class="${resultados < 0 ? "neg" : "pos"}">${simbolo} ${fmtMoney(resultados)}</td>
         <td class="muted">-</td>
         <td>${tipo}</td>
         <td>Equanima</td>
-        <td><button onclick="borrarPosicion('${cli.id}','${key}',${i})">✕</button></td>
+        <td>${esAdmin() ? `<button onclick="borrarPosicion('${cli.id}','${key}',${i})">✕</button>` : ""}</td>
       </tr>
     `;
   }).join("");
@@ -436,7 +440,7 @@ function renderActuales(cli, key, simbolo) {
         <td class="${totalResultados < 0 ? "neg" : "pos"}">${simbolo} ${fmtMoney(totalResultados)}</td><td></td><td></td><td></td><td></td></tr>
       </tfoot>
     </table>
-    <button onclick="agregarPosicion('${cli.id}','${key}')">+ Agregar posición</button>
+    ${esAdmin() ? `<button onclick="agregarPosicion('${cli.id}','${key}')">+ Agregar posición</button>` : ""}
   `;
 }
 
@@ -485,15 +489,15 @@ function renderCerradas(cli, moneda, simbolo) {
       const pct = costo ? (pnl / costo) * 100 : null;
       return `
         <tr>
-          <td><input value="${g.ticker}" onchange="editarGanancia('${cli.id}',${i},'ticker',this.value)"></td>
+          <td>${esAdmin() ? `<input value="${g.ticker}" onchange="editarGanancia('${cli.id}',${i},'ticker',this.value)">` : g.ticker}</td>
           <td>Equanima</td>
-          <td><input type="number" value="${g.cantidad || 0}" step="any" onchange="editarGanancia('${cli.id}',${i},'cantidad',this.value)"></td>
-          <td><input type="number" value="${g.costo || 0}" step="any" onchange="editarGanancia('${cli.id}',${i},'costo',this.value)"></td>
-          <td><input type="number" value="${g.ventaRescate || 0}" step="any" onchange="editarGanancia('${cli.id}',${i},'ventaRescate',this.value)"></td>
+          <td>${esAdmin() ? `<input type="number" value="${g.cantidad || 0}" step="any" onchange="editarGanancia('${cli.id}',${i},'cantidad',this.value)">` : fmtMoney(g.cantidad || 0, 0)}</td>
+          <td>${esAdmin() ? `<input type="number" value="${g.costo || 0}" step="any" onchange="editarGanancia('${cli.id}',${i},'costo',this.value)">` : fmtMoney(g.costo || 0)}</td>
+          <td>${esAdmin() ? `<input type="number" value="${g.ventaRescate || 0}" step="any" onchange="editarGanancia('${cli.id}',${i},'ventaRescate',this.value)">` : fmtMoney(g.ventaRescate || 0)}</td>
           <td class="${pnl < 0 ? "neg" : "pos"}">${simbolo} ${fmtMoney(pnl)}</td>
           <td class="${pct !== null && pct < 0 ? "neg" : pct !== null ? "pos" : ""}">${pct !== null ? fmtPct(pct) : "-"}</td>
-          <td><input type="date" value="${g.fecha}" onchange="editarGanancia('${cli.id}',${i},'fecha',this.value)"></td>
-          <td><button onclick="borrarGanancia('${cli.id}',${i})">✕</button></td>
+          <td>${esAdmin() ? `<input type="date" value="${g.fecha}" onchange="editarGanancia('${cli.id}',${i},'fecha',this.value)">` : g.fecha}</td>
+          <td>${esAdmin() ? `<button onclick="borrarGanancia('${cli.id}',${i})">✕</button>` : ""}</td>
         </tr>
       `;
     }).join("");
@@ -505,8 +509,9 @@ function renderCerradas(cli, moneda, simbolo) {
       </table>
     `;
   }
-  const btn = document.createElement("div");
-  el.insertAdjacentHTML("beforeend", `<button onclick="agregarGanancia('${cli.id}','${moneda}')">+ Agregar posición cerrada</button>`);
+  if (esAdmin()) {
+    el.insertAdjacentHTML("beforeend", `<button onclick="agregarGanancia('${cli.id}','${moneda}')">+ Agregar posición cerrada</button>`);
+  }
 }
 
 function editarGanancia(id, idx, campo, valor) {
@@ -732,11 +737,11 @@ function renderCarryTrade(clientes) {
         <tr>
           <td>${pos.t}</td>
           <td>${pos.n}</td>
-          <td><input type="number" step="any" value="${pos.p}" style="width:100px"
-              onchange="editarPosicion('${cli.id}','detallePesos',${idx},'p',this.value)"></td>
+          <td>${esAdmin() ? `<input type="number" step="any" value="${pos.p}" style="width:100px"
+              onchange="editarPosicion('${cli.id}','detallePesos',${idx},'p',this.value)">` : fmtMoney(pos.p)}</td>
           <td>$ ${fmtMoney(montoPesos)}</td>
-          <td><input type="number" step="any" placeholder="MEP entrada" value="${pos.mepEntrada || ""}"
-              onchange="editarMepEntrada('${cli.id}',${idx},this.value)"></td>
+          <td>${esAdmin() ? `<input type="number" step="any" placeholder="MEP entrada" value="${pos.mepEntrada || ""}"
+              onchange="editarMepEntrada('${cli.id}',${idx},this.value)">` : (pos.mepEntrada ? fmtMoney(pos.mepEntrada) : "-")}</td>
           <td>${usdInvertido !== null ? "USD " + fmtMoney(usdInvertido) : "-"}</td>
           <td>$ ${fmtMoney(valorActualPesos)}</td>
           <td>${valorActualUSD !== null ? "USD " + fmtMoney(valorActualUSD) : "-"}</td>
@@ -751,7 +756,7 @@ function renderCarryTrade(clientes) {
         <h3>${cli.id} ${cli.nombre}</h3>
         <div class="row" style="max-width:320px">
           <span>MEP actual (para valuar hoy)</span>
-          <input type="number" step="any" value="${mepActual || ""}" onchange="editarMepActual('${cli.id}', this.value)">
+          ${esAdmin() ? `<input type="number" step="any" value="${mepActual || ""}" onchange="editarMepActual('${cli.id}', this.value)">` : `<b>${fmtMoney(mepActual)}</b>`}
         </div>
         <div class="table-wrap">
           <table>
@@ -841,10 +846,29 @@ function exportarEstado() {
   URL.revokeObjectURL(url);
 }
 
-// ---------- Login ----------
+// ---------- Login (simulado — se reemplaza por el login real de Gallo en el backend) ----------
+
+let sesion = null; // { email, rol: 'admin'|'cliente', comitenteId }
+
+function esAdmin() {
+  return sesion && sesion.rol === "admin";
+}
+
+function resolverSesion(email, pass) {
+  if (pass !== PASSWORD_DEMO) return null;
+  const mail = (email || "").trim().toLowerCase();
+  if (mail === ADMIN_EMAIL.toLowerCase()) {
+    return { email: mail, rol: "admin", comitenteId: null };
+  }
+  const cliente = CLIENTES.find(c => (c.email || "").toLowerCase() === mail);
+  if (cliente) return { email: mail, rol: "cliente", comitenteId: cliente.id };
+  return null;
+}
 
 function checkLogin() {
-  if (sessionStorage.getItem("logged_in") === "1") {
+  const guardada = sessionStorage.getItem("sesion");
+  if (guardada) {
+    sesion = JSON.parse(guardada);
     document.getElementById("login").style.display = "none";
     document.getElementById("app").style.display = "flex";
     init();
@@ -852,36 +876,58 @@ function checkLogin() {
 }
 
 function doLogin() {
+  const email = document.getElementById("emailInput").value;
   const pass = document.getElementById("passInput").value;
-  if (pass === PASSWORD) {
-    sessionStorage.setItem("logged_in", "1");
+  const resultado = resolverSesion(email, pass);
+  if (resultado) {
+    sesion = resultado;
+    sessionStorage.setItem("sesion", JSON.stringify(sesion));
     document.getElementById("login").style.display = "none";
     document.getElementById("app").style.display = "flex";
     init();
   } else {
-    document.getElementById("loginError").textContent = "Contraseña incorrecta";
+    document.getElementById("loginError").textContent = "Email o contraseña incorrectos";
   }
 }
 
 function logout() {
-  sessionStorage.removeItem("logged_in");
+  sessionStorage.removeItem("sesion");
   location.reload();
 }
 
 function init() {
   document.querySelectorAll(".navbtn").forEach(b => {
+    if (b.dataset.adminOnly === "1" && !esAdmin()) { b.style.display = "none"; return; }
     b.addEventListener("click", () => irAVista(b.dataset.view));
   });
-  const sel = document.getElementById("comitenteSelect");
-  sel.addEventListener("change", render);
-  document.getElementById("btnExportar").addEventListener("click", exportarEstado);
+
+  if (esAdmin()) {
+    document.getElementById("selectorWrap").style.removeProperty("display");
+    const sel = document.getElementById("comitenteSelect");
+    sel.addEventListener("change", render);
+  } else {
+    document.getElementById("selectorWrap").style.display = "none";
+    const cli = CLIENTES.find(c => c.id === sesion.comitenteId);
+    clienteActualId = sesion.comitenteId;
+    const fijo = document.getElementById("clienteFijo");
+    fijo.textContent = `${cli.id} ${cli.nombre}`;
+    fijo.style.display = "inline";
+  }
+
+  document.getElementById("userBadge").textContent = sesion.email;
+  if (esAdmin()) {
+    document.getElementById("btnExportar").addEventListener("click", exportarEstado);
+  } else {
+    document.getElementById("btnExportar").style.display = "none";
+  }
   document.getElementById("btnLogout").addEventListener("click", logout);
   document.getElementById("fecha").textContent = new Date().toLocaleDateString("es-AR", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-  irAVista("general");
+  irAVista(esAdmin() ? "general" : "dashboardCliente");
 }
 
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("btnLogin").addEventListener("click", doLogin);
   document.getElementById("passInput").addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
+  document.getElementById("emailInput").addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
   checkLogin();
 });

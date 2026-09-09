@@ -206,9 +206,11 @@
 <div id="login">
   <div class="box">
     <h3>Posiciones de Clientes</h3>
-    <input type="password" id="passInput" placeholder="Contraseña">
+    <input type="email" id="emailInput" placeholder="Email" autocomplete="username">
+    <input type="password" id="passInput" placeholder="Contraseña" autocomplete="current-password">
     <button id="btnLogin">Ingresar</button>
     <div id="loginError"></div>
+    <p class="muted" style="font-size:11px;margin:0">Login simulado — se reemplaza por el de Gallo cuando conectemos el backend.</p>
   </div>
 </div>
 
@@ -216,15 +218,16 @@
   <aside class="sidebar">
     <div class="brand"><b>Equanima</b><span>Posiciones de Clientes</span></div>
     <nav>
-      <button class="navbtn" data-view="general">General</button>
+      <button class="navbtn" data-view="general" data-admin-only="1">General</button>
       <button class="navbtn" data-view="dashboardCliente">Dashboard</button>
       <button class="navbtn" data-view="posiciones">Posiciones</button>
       <button class="navbtn" data-view="rendimiento">Rendimiento</button>
       <button class="navbtn" data-view="cauciones">Cauciones</button>
       <button class="navbtn" data-view="carry">Carry Trade</button>
-      <button class="navbtn" data-view="comitentes">Comitentes</button>
+      <button class="navbtn" data-view="comitentes" data-admin-only="1">Comitentes</button>
     </nav>
     <div class="bottom">
+      <span id="userBadge" class="muted" style="font-size:12px;display:block;margin-bottom:8px;word-break:break-all;"></span>
       <button id="btnLogout">Salir</button>
     </div>
   </aside>
@@ -236,6 +239,7 @@
         <div id="selectorWrap">
           <select id="comitenteSelect"></select>
         </div>
+        <span id="clienteFijo" style="display:none;font-weight:600"></span>
         <button id="btnExportar">Exportar estado (JSON)</button>
       </div>
     </div>

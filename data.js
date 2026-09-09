@@ -9,7 +9,7 @@ const BONOS = ["T31Y7","TZXS8","T15E7","S3O6","GD30","GN47O","MGCMO","MGCNO","MG
 
 const CLIENTES = [
   {
-    id: "1237", nombre: "ZUNINO DIAZ GUIDO", tc: 1525.39,
+    id: "1237", nombre: "ZUNINO DIAZ GUIDO", email: "guido.zunino@cliente.equanima.com", tc: 1525.39,
     totalPortfolio: 2099469784.11,
     pesos: { valor: 2743179200.00, cuentaCorriente: -19452592.77 },
     dolares: { valorUSD: 0, valorARS: 0, cuentaCorrienteUSD: -409243.16, cuentaCorrienteARS: -624256823.12 },
@@ -77,7 +77,7 @@ const CLIENTES = [
       {"fecha":"2026-09-02","ticker":"NU","cantidad":10993,"costo":122024190.92,"ventaRescate":133790042.67,"moneda":"ARS"}]
   },
   {
-    id: "1238", nombre: "ZUNINO GABRIEL JU...", tc: 1525.39,
+    id: "1238", nombre: "ZUNINO GABRIEL JU...", email: "gabriel.zunino@cliente.equanima.com", tc: 1525.39,
     totalPortfolio: 2282541693.18,
     pesos: { valor: 1718185340.00, cuentaCorriente: -253062533.50 },
     dolares: { valorUSD: 951561.71, valorARS: 1451505970.40, cuentaCorrienteUSD: -415687.57, cuentaCorrienteARS: -634087083.72 },
@@ -145,7 +145,7 @@ const CLIENTES = [
     alertas: ["Detalle Dólares puede estar incompleto (la captura se cortó antes del subtotal) — los totales de Portafolio en dólares y Cuenta corriente dólares son correctos igual, vienen del resumen."]
   },
   {
-    id: "1239", nombre: "ZUNINO DIAZ FRANC...", tc: 1525.39,
+    id: "1239", nombre: "ZUNINO DIAZ FRANC...", email: "francisco.zunino@cliente.equanima.com", tc: 1525.39,
     totalPortfolio: 1988294231.81,
     pesos: { valor: 2810920760.00, cuentaCorriente: -210514643.41 },
     dolares: { valorUSD: 32041.04, valorARS: 48875191.56, cuentaCorrienteUSD: -433322.36, cuentaCorrienteARS: -660987076.34 },
@@ -252,7 +252,7 @@ const CLIENTES = [
       {"fecha":"2026-09-04","ticker":"MU","cantidad":200,"costo":60128284.16,"ventaRescate":63047056,"moneda":"ARS"}]
   },
   {
-    id: "1323", nombre: "QUINTANA LAMBOIS...", tc: 1534.30,
+    id: "1323", nombre: "QUINTANA LAMBOIS...", email: "quintana.lambois@cliente.equanima.com", tc: 1534.30,
     totalPortfolio: 7636649.64,
     pesos: { valor: 7489248.00, cuentaCorriente: 17722.34 },
     dolares: { valorUSD: 0, valorARS: 0, cuentaCorrienteUSD: 84.52, cuentaCorrienteARS: 129679.30 },
@@ -265,7 +265,7 @@ const CLIENTES = [
     ganancias: []
   },
   {
-    id: "1329", nombre: "ZUNINO DIAZ CARLA", tc: 1534.30,
+    id: "1329", nombre: "ZUNINO DIAZ CARLA", email: "carla.zunino@cliente.equanima.com", tc: 1534.30,
     totalPortfolio: 54562190.43,
     pesos: { valor: 54415721.67, cuentaCorriente: 12815.61 },
     dolares: { valorUSD: 0, valorARS: 0, cuentaCorrienteUSD: 87.11, cuentaCorrienteARS: 133653.15 },
@@ -281,7 +281,7 @@ const CLIENTES = [
     ganancias: []
   },
   {
-    id: "1363", nombre: "BUCURE DELFINA", tc: 1534.30,
+    id: "1363", nombre: "BUCURE DELFINA", email: "delfina.bucure@cliente.equanima.com", tc: 1534.30,
     totalPortfolio: 112406687.38,
     pesos: { valor: 34588970.00, cuentaCorriente: 16257.35 },
     dolares: { valorUSD: 46762.00, valorARS: 71747084.41, cuentaCorrienteUSD: 3946.01, cuentaCorrienteARS: 6054375.62 },
@@ -300,7 +300,7 @@ const CLIENTES = [
     ganancias: []
   },
   {
-    id: "1374", nombre: "CECILIA MARIA DIAZ", tc: 1534.30,
+    id: "1374", nombre: "CECILIA MARIA DIAZ", email: "cecilia.diaz@cliente.equanima.com", tc: 1534.30,
     totalPortfolio: 56290016.91,
     pesos: { valor: 54929042.70, cuentaCorriente: 1344587.85 },
     dolares: { valorUSD: 0, valorARS: 0, cuentaCorrienteUSD: 10.68, cuentaCorrienteARS: 16386.36 },
@@ -318,7 +318,7 @@ const CLIENTES = [
     alertas: ["La tabla Detalle Dólares no se alcanzó a ver completa en la captura (parecía vacía, coherente con Portafolio en dólares = 0)."]
   },
   {
-    id: "1416", nombre: "BARENAS, AGUSTIN", tc: 1534.30,
+    id: "1416", nombre: "BARENAS, AGUSTIN", email: "agustin.barenas@cliente.equanima.com", tc: 1534.30,
     totalPortfolio: 69561828.53,
     pesos: { valor: 68355435.19, cuentaCorriente: 1232138.95 },
     dolares: { valorUSD: 0, valorARS: 0, cuentaCorrienteUSD: -16.78, cuentaCorrienteARS: -25745.61 },
@@ -335,7 +335,7 @@ const CLIENTES = [
     ganancias: []
   },
   {
-    id: "1483", nombre: "TORTORELLI, MARIA...", tc: 1534.30,
+    id: "1483", nombre: "TORTORELLI, MARIA...", email: "maria.tortorelli@cliente.equanima.com", tc: 1534.30,
     totalPortfolio: 23111943.82,
     pesos: { valor: 14694426.28, cuentaCorriente: 552786.94 },
     dolares: { valorUSD: 5125.53, valorARS: 7864116.88, cuentaCorrienteUSD: 0.40, cuentaCorrienteARS: 613.72 },
@@ -355,7 +355,7 @@ const CLIENTES = [
     ganancias: []
   },
   {
-    id: "1502", nombre: "PEREZ GOMEZ, SANT...", tc: 1534.30,
+    id: "1502", nombre: "PEREZ GOMEZ, SANT...", email: "santiago.perezgomez@cliente.equanima.com", tc: 1534.30,
     totalPortfolio: 0,
     pesos: { valor: 0, cuentaCorriente: 0 },
     dolares: { valorUSD: 0, valorARS: 0, cuentaCorrienteUSD: 0, cuentaCorrienteARS: 0 },
@@ -368,3 +368,8 @@ const CLIENTES = [
 
 const TASA_TNA_USD = 0.02;   // caución tomada en dólares
 const TASA_TNA_ARS = 0.24;   // caución / excedente en pesos
+
+// Login simulado (fase solo-frontend): en producción esto lo va a resolver el backend
+// contra el mail de Gallo. Por ahora, una sola contraseña para todos, y el mail decide el rol.
+const PASSWORD_DEMO = "091218";
+const ADMIN_EMAIL = "fzunino@equanimasecurities.com";
