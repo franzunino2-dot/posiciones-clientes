@@ -4,18 +4,21 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Posiciones de Clientes — Equanima</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #10151a;
-    --bg-card: #16211c;
-    --bg-card2: #1c2a23;
-    --border: #24352c;
-    --text: #eef1f6;
-    --muted: #93a39a;
-    --accent: #3ecf8e;
-    --green: #3ecf8e;
-    --red: #ff5c5c;
-    --sidebar-w: 220px;
+    --bg: #0b1220;
+    --bg-card: #111b2d;
+    --bg-card2: #16233a;
+    --border: #1d2b44;
+    --text: #e8eef9;
+    --muted: #8a9bb8;
+    --accent: #0ea5e9;
+    --green: #2dd4a0;
+    --red: #ff6b6b;
+    --sidebar-w: 250px;
+    --serif: 'Instrument Serif', Georgia, 'Times New Roman', serif;
   }
   * { box-sizing: border-box; }
   body {
@@ -40,25 +43,67 @@
   .sidebar {
     width: var(--sidebar-w);
     flex-shrink: 0;
-    background: #0c1210;
+    background: #09101e;
     border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
     padding: 20px 0;
   }
-  .sidebar .brand { padding: 0 20px 20px; }
-  .sidebar .brand b { font-size: 17px; display: block; }
+  .sidebar { position: sticky; top: 0; height: 100vh; }
+  .sidebar .brand { padding: 0 20px 18px; }
+  .sidebar .brand b { font-family: var(--serif); font-weight: 400; font-size: 32px; display: block; letter-spacing: -.01em; }
+  .sidebar .brand b i { color: var(--accent); }
   .sidebar .brand span { color: var(--muted); font-size: 12px; }
-  .sidebar nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+  .sidebar nav { display: flex; flex-direction: column; gap: 4px; flex: 1; padding: 0 10px; overflow-y: auto; }
   .navbtn {
-    background: none; border: none; border-radius: 0;
-    text-align: left; padding: 10px 20px; color: var(--muted);
-    font-size: 14px; cursor: pointer;
+    display: flex; align-items: center; gap: 12px;
+    background: none; border: none; border-radius: 10px;
+    text-align: left; padding: 10px 12px; color: var(--text);
+    font-size: 14px; font-weight: 500; cursor: pointer; width: 100%;
   }
-  .navbtn:hover { background: var(--bg-card2); color: var(--text); }
-  .navbtn.active { background: var(--bg-card2); color: var(--accent); border-left: 3px solid var(--accent); padding-left: 17px; }
-  .sidebar .bottom { padding: 0 20px; }
+  .navbtn svg, .navgroup svg { width: 18px; height: 18px; flex-shrink: 0; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .navbtn.sub { margin-left: 14px; width: calc(100% - 14px); color: var(--muted); font-weight: 400; padding: 9px 12px; }
+  .navbtn:hover { background: var(--bg-card2); color: var(--text); border-color: transparent; }
+  .navbtn.active { background: #0f2a45; color: var(--accent); }
+  .navgroup { display: flex; align-items: center; gap: 12px; padding: 10px 12px; font-size: 14px; font-weight: 600; border-radius: 10px; }
+  .navgroup.open { background: #0f2036; }
+  .navsep { height: 1px; background: var(--border); margin: 8px 6px; }
+  .sidebar .bottom { padding: 12px 20px 0; border-top: 1px solid var(--border); }
   .sidebar .bottom button { width: 100%; }
+
+  .ticker { display: flex; align-items: center; gap: 16px; border-bottom: 1px solid var(--border); background: #0a111f; height: 38px; overflow: hidden; }
+  .ticker-track { flex: 1; overflow: hidden; white-space: nowrap; mask-image: linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent); }
+  .ticker-move { display: inline-flex; gap: 34px; padding-left: 20px; animation: tick 60s linear infinite; }
+  .ticker-track:hover .ticker-move { animation-play-state: paused; }
+  @keyframes tick { to { transform: translateX(-50%); } }
+  .tk { font-size: 12px; display: inline-flex; gap: 8px; align-items: baseline; }
+  .tk .n { color: var(--muted); letter-spacing: .04em; }
+  .tk .v { font-weight: 600; }
+  .mkt-badges { display: flex; gap: 8px; padding-right: 14px; flex-shrink: 0; }
+  .mkt { font-size: 11px; border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; color: var(--muted); white-space: nowrap; }
+  .mkt::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--muted); margin-right: 6px; }
+  .mkt.open { color: var(--green); border-color: rgba(45,212,160,.3); background: rgba(45,212,160,.08); }
+  .mkt.open::before { background: var(--green); }
+
+  .hero-title { font-family: var(--serif); font-weight: 400; font-size: 48px; line-height: 1.08; margin: 6px 0 22px; letter-spacing: -.01em; max-width: 1000px; }
+  .hero-title .soft { color: #b7c3d8; }
+  .hero-title em { color: var(--accent); }
+  .hero-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 32px; display: grid; grid-template-columns: 1.15fr 1fr; gap: 28px; margin-bottom: 20px; }
+  .hero-card .pill { display: inline-flex; align-items: center; gap: 8px; background: #0f2a45; color: var(--accent); border-radius: 999px; padding: 5px 12px; font-size: 12px; margin-bottom: 18px; }
+  .hero-card .pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .hero-big { font-family: var(--serif); font-size: 52px; line-height: 1.05; margin: 0 0 8px; letter-spacing: -.01em; }
+  .hero-big em { color: var(--accent); }
+  .hero-sub { color: #c4cee0; font-size: 15px; margin: 0 0 22px; }
+  .btn-primary { background: var(--accent); color: #04121c; border: none; border-radius: 999px; padding: 12px 22px; font-weight: 600; font-size: 14px; }
+  .btn-primary:hover { filter: brightness(1.1); border: none; }
+  .hero-chips { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 22px; color: var(--muted); font-size: 12px; }
+  .hero-chips span::before { content: '✓'; color: var(--green); margin-right: 6px; }
+  .mini-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-content: start; }
+  .mini { background: var(--bg-card2); border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 6px; }
+  .mini .stat-label { text-transform: none; font-size: 12px; letter-spacing: 0; }
+  .mini b { font-size: 20px; }
+  .mini.warn { border-color: rgba(255,107,107,.5); }
+  @media (max-width: 1100px) { .hero-card { grid-template-columns: 1fr; } .hero-title { font-size: 36px; } }
 
   .content { flex: 1; min-width: 0; }
   .topbar {
@@ -157,7 +202,7 @@
 
   .periodo-tabs, .moneda-toggle { display: flex; gap: 6px; margin-bottom: 16px; }
   .periodo-btn { background: var(--bg-card); }
-  .periodo-btn.active { background: var(--accent); color: #06140d; border-color: var(--accent); font-weight: 600; }
+  .periodo-btn.active { background: var(--accent); color: #04121c; border-color: var(--accent); font-weight: 600; }
 
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   thead th {
@@ -210,21 +255,26 @@
     <input type="password" id="passInput" placeholder="Contraseña" autocomplete="current-password">
     <button id="btnLogin">Ingresar</button>
     <div id="loginError"></div>
-    <p class="muted" style="font-size:11px;margin:0">Login simulado — se reemplaza por el de Gallo cuando conectemos el backend.</p>
+    <p class="muted" style="font-size:11px;margin:0">Con el servidor local conectado, el email se valida contra Gallo.</p>
   </div>
 </div>
 
 <div id="app">
   <aside class="sidebar">
-    <div class="brand"><b>Equanima</b><span>Posiciones de Clientes</span></div>
+    <div class="brand"><b>equanima<i>.</i></b><span>Tu cartera, en un solo lugar</span></div>
     <nav>
-      <button class="navbtn" data-view="general" data-admin-only="1">General</button>
-      <button class="navbtn" data-view="dashboardCliente">Dashboard</button>
-      <button class="navbtn" data-view="posiciones">Posiciones</button>
-      <button class="navbtn" data-view="rendimiento">Rendimiento</button>
-      <button class="navbtn" data-view="cauciones">Cauciones</button>
-      <button class="navbtn" data-view="carry">Carry Trade</button>
-      <button class="navbtn" data-view="comitentes" data-admin-only="1">Comitentes</button>
+      <div class="navgroup open"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>Inicio</div>
+      <button class="navbtn sub" data-view="dashboardCliente"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v9h9"/></svg>Cartera</button>
+      <button class="navbtn sub" data-view="posiciones"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Posiciones</button>
+      <button class="navbtn sub" data-view="rendimiento"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg>Rendimiento</button>
+      <button class="navbtn" data-view="cauciones"><svg viewBox="0 0 24 24"><path d="M3 10l9-6 9 6M5 10v8M10 10v8M14 10v8M19 10v8M3 20h18"/></svg>Cauciones</button>
+      <button class="navbtn" data-view="carry"><svg viewBox="0 0 24 24"><path d="M7 4L3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg>Carry Trade</button>
+      <div class="navsep"></div>
+      <button class="navbtn" data-view="cargar" data-admin-only="1"><svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg>Cargar archivo</button>
+      <button class="navbtn" data-view="mercado"><svg viewBox="0 0 24 24"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg>Mercado</button>
+      <div class="navsep" data-admin-only="1"></div>
+      <button class="navbtn" data-view="general" data-admin-only="1"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>General</button>
+      <button class="navbtn" data-view="comitentes" data-admin-only="1"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-3.5 3-6 7-6s7 2.5 7 6M17 5a3.5 3.5 0 010 7M22 20c0-2.5-1.5-4.5-4-5.3"/></svg>Comitentes</button>
     </nav>
     <div class="bottom">
       <span id="userBadge" class="muted" style="font-size:12px;display:block;margin-bottom:8px;word-break:break-all;"></span>
@@ -233,6 +283,10 @@
   </aside>
 
   <div class="content">
+    <div class="ticker">
+      <div class="ticker-track"><div class="ticker-move" id="tickerMove"></div></div>
+      <div class="mkt-badges" id="mktBadges"></div>
+    </div>
     <div class="topbar">
       <span id="fecha"></span>
       <div class="controls">
@@ -251,12 +305,16 @@
       <div class="view" id="view-rendimiento"></div>
       <div class="view" id="view-cauciones"></div>
       <div class="view" id="view-carry"></div>
+      <div class="view" id="view-cargar"></div>
+      <div class="view" id="view-mercado"></div>
       <div class="view" id="view-comitentes"></div>
     </main>
   </div>
 </div>
 
+<script src="vendor/xlsx.full.min.js"></script>
 <script src="data.js"></script>
+<script src="importar.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

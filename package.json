@@ -1,0 +1,18 @@
+{
+  "name": "posiciones-clientes",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dashboard de posiciones/cauciones/carry trade para comitentes de Equanima — front end estático + backend local que conecta a Gallo/EGWS",
+  "main": "servidor.js",
+  "scripts": {
+    "start": "node servidor.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2"
+  }
+}

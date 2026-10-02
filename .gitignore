@@ -1,0 +1,4 @@
+node_modules/
+.env
+ganancias.json
+vendor/_test.xls
