@@ -38,7 +38,12 @@ const GALLO_PASS = process.env.GALLO_PASS || '';
 const GALLO_ON = !!(GALLO_BASE && GALLO_USER && GALLO_PASS);
 const GALLO_WS = '/' + String(process.env.GALLO_WS || 'ws').replace(/^\/+|\/+$/g, '');
 const APP_PASSWORD = process.env.APP_PASSWORD || '091218';
-const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'fzunino@equanimasecurities.com').toLowerCase();
+// Admin (ve todos los comitentes): SOLO si se define ADMIN_EMAIL en .env. Por defecto no hay admin:
+// cada productor ve únicamente los comitentes que Gallo le asigna (Manager).
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase();
+// Productores cuyo mail no figura en la lista de Managers de Gallo: "mail=códigoManager;mail=código".
+const PRODUCTOR_EMAILS = {};
+String(process.env.PRODUCTOR_EMAILS || '').split(';').forEach(p => { const [m, c] = p.split('='); if (m && c) PRODUCTOR_EMAILS[m.trim().toLowerCase()] = c.trim(); });
 
 const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 const gallo = GALLO_BASE ? axios.create({ baseURL: GALLO_BASE.replace(/\/$/, ''), timeout: 30000, httpsAgent }) : null;
@@ -289,7 +294,7 @@ app.post('/api/login', async (req, res) => {
     if (pass !== APP_PASSWORD) return res.status(401).json({ ok: false, error: 'Contraseña incorrecta' });
     if (!email) return res.status(400).json({ ok: false, error: 'Falta email' });
 
-    if (email === ADMIN_EMAIL) {
+    if (ADMIN_EMAIL && email === ADMIN_EMAIL) {
       const token = nuevoToken();
       sesiones.set(token, { email, rol: 'admin', comitenteId: null });
       return res.json({ ok: true, token, email, rol: 'admin' });
@@ -298,6 +303,12 @@ app.post('/api/login', async (req, res) => {
     if (!GALLO_ON) return res.status(503).json({ ok: false, error: 'Gallo no configurado en este servidor — no se puede validar el email en vivo' });
 
     const { clientes, managers } = await getIdentidad();
+    if (PRODUCTOR_EMAILS[email]) {
+      const token = nuevoToken();
+      const managerId = PRODUCTOR_EMAILS[email];
+      sesiones.set(token, { email, rol: 'productor', managerId, comitenteId: null });
+      return res.json({ ok: true, token, email, rol: 'productor', managerId });
+    }
     const mgr = managers.find(m => (m.Email || '').toLowerCase() === email);
     if (mgr) {
       const token = nuevoToken();
