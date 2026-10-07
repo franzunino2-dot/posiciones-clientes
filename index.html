@@ -3,318 +3,247 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Posiciones de Clientes — Equanima</title>
+<title>Equanima — Tus carteras, en un solo lugar</title>
+<meta name="description" content="Plataforma de Equanima Securities para ver posiciones, cauciones y rendimiento de cada comitente, en pesos y en dólares.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #0b1220;
-    --bg-card: #111b2d;
-    --bg-card2: #16233a;
+    --bg-soft: #0e1729;
+    --card: #111b2d;
+    --card2: #16233a;
     --border: #1d2b44;
     --text: #e8eef9;
+    --soft: #b7c3d8;
     --muted: #8a9bb8;
     --accent: #0ea5e9;
     --green: #2dd4a0;
     --red: #ff6b6b;
-    --sidebar-w: 250px;
     --serif: 'Instrument Serif', Georgia, 'Times New Roman', serif;
   }
   * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    font-family: -apple-system, Segoe UI, Roboto, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-  }
-  select, input, button {
-    background: var(--bg-card2);
-    color: var(--text);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 6px 10px;
-    font-size: 14px;
-  }
-  button { cursor: pointer; }
-  button:hover { border-color: var(--accent); }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; line-height: 1.5; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
 
-  #app { display: none; min-height: 100vh; }
+  nav.top { position: sticky; top: 0; z-index: 10; background: rgba(11,18,32,.85); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
+  nav.top .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 16px; }
+  .logo { font-family: var(--serif); font-size: 30px; letter-spacing: -.01em; }
+  .logo i { color: var(--accent); }
+  .links { display: flex; gap: 28px; font-size: 14px; color: var(--soft); }
+  .links a:hover { color: var(--text); }
+  .btn { display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; padding: 11px 22px; font-size: 14px; font-weight: 600; border: 1px solid transparent; cursor: pointer; }
+  .btn-primary { background: var(--accent); color: #04121c; }
+  .btn-primary:hover { filter: brightness(1.1); }
+  .btn-ghost { border-color: var(--border); color: var(--text); background: transparent; }
+  .btn-ghost:hover { border-color: var(--accent); }
+  nav.top .btn { padding: 9px 18px; }
 
-  .sidebar {
-    width: var(--sidebar-w);
-    flex-shrink: 0;
-    background: #09101e;
-    border-right: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    padding: 20px 0;
-  }
-  .sidebar { position: sticky; top: 0; height: 100vh; }
-  .sidebar .brand { padding: 0 20px 18px; }
-  .sidebar .brand b { font-family: var(--serif); font-weight: 400; font-size: 32px; display: block; letter-spacing: -.01em; }
-  .sidebar .brand b i { color: var(--accent); }
-  .sidebar .brand span { color: var(--muted); font-size: 12px; }
-  .sidebar nav { display: flex; flex-direction: column; gap: 4px; flex: 1; padding: 0 10px; overflow-y: auto; }
-  .navbtn {
-    display: flex; align-items: center; gap: 12px;
-    background: none; border: none; border-radius: 10px;
-    text-align: left; padding: 10px 12px; color: var(--text);
-    font-size: 14px; font-weight: 500; cursor: pointer; width: 100%;
-  }
-  .navbtn svg, .navgroup svg { width: 18px; height: 18px; flex-shrink: 0; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-  .navbtn.sub { margin-left: 14px; width: calc(100% - 14px); color: var(--muted); font-weight: 400; padding: 9px 12px; }
-  .navbtn:hover { background: var(--bg-card2); color: var(--text); border-color: transparent; }
-  .navbtn.active { background: #0f2a45; color: var(--accent); }
-  .navgroup { display: flex; align-items: center; gap: 12px; padding: 10px 12px; font-size: 14px; font-weight: 600; border-radius: 10px; }
-  .navgroup.open { background: #0f2036; }
-  .navsep { height: 1px; background: var(--border); margin: 8px 6px; }
-  .sidebar .bottom { padding: 12px 20px 0; border-top: 1px solid var(--border); }
-  .sidebar .bottom button { width: 100%; }
+  .hero { padding: 84px 0 56px; }
+  .hero-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 48px; align-items: center; }
+  h1 { font-family: var(--serif); font-weight: 400; font-size: 66px; line-height: 1.04; letter-spacing: -.015em; margin: 0 0 20px; }
+  h1 em { color: var(--accent); }
+  .lead { font-size: 18px; color: var(--soft); max-width: 520px; margin: 0 0 30px; }
+  .cta-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 26px; }
+  .badges { display: flex; gap: 20px; flex-wrap: wrap; color: var(--muted); font-size: 13px; }
+  .badges span::before { content: '✓'; color: var(--green); margin-right: 6px; }
 
-  .ticker { display: flex; align-items: center; gap: 16px; border-bottom: 1px solid var(--border); background: #0a111f; height: 38px; overflow: hidden; }
-  .ticker-track { flex: 1; overflow: hidden; white-space: nowrap; mask-image: linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent); }
-  .ticker-move { display: inline-flex; gap: 34px; padding-left: 20px; animation: tick 60s linear infinite; }
-  .ticker-track:hover .ticker-move { animation-play-state: paused; }
-  @keyframes tick { to { transform: translateX(-50%); } }
-  .tk { font-size: 12px; display: inline-flex; gap: 8px; align-items: baseline; }
-  .tk .n { color: var(--muted); letter-spacing: .04em; }
-  .tk .v { font-weight: 600; }
-  .mkt-badges { display: flex; gap: 8px; padding-right: 14px; flex-shrink: 0; }
-  .mkt { font-size: 11px; border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; color: var(--muted); white-space: nowrap; }
-  .mkt::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--muted); margin-right: 6px; }
-  .mkt.open { color: var(--green); border-color: rgba(45,212,160,.3); background: rgba(45,212,160,.08); }
-  .mkt.open::before { background: var(--green); }
+  .mock { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 22px; box-shadow: 0 30px 80px rgba(0,0,0,.35); }
+  .mock-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; font-size: 12px; color: var(--muted); }
+  .live { color: var(--green); }
+  .live::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--green); margin-right: 6px; }
+  .mock-title { font-size: 13px; color: var(--muted); }
+  .mock-big { font-family: var(--serif); font-size: 46px; line-height: 1.05; margin: 2px 0 14px; }
+  .mock-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+  .mini { background: var(--card2); border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+  .mini small { display: block; color: var(--muted); font-size: 11px; }
+  .mini b { font-size: 17px; }
+  .pos { color: var(--green); } .neg { color: var(--red); }
+  .mock-note { margin-top: 14px; font-size: 11px; color: var(--muted); text-align: center; }
 
-  .hero-title { font-family: var(--serif); font-weight: 400; font-size: 48px; line-height: 1.08; margin: 6px 0 22px; letter-spacing: -.01em; max-width: 1000px; }
-  .hero-title .soft { color: #b7c3d8; }
-  .hero-title em { color: var(--accent); }
-  .hero-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 32px; display: grid; grid-template-columns: 1.15fr 1fr; gap: 28px; margin-bottom: 20px; }
-  .hero-card .pill { display: inline-flex; align-items: center; gap: 8px; background: #0f2a45; color: var(--accent); border-radius: 999px; padding: 5px 12px; font-size: 12px; margin-bottom: 18px; }
-  .hero-card .pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
-  .hero-big { font-family: var(--serif); font-size: 52px; line-height: 1.05; margin: 0 0 8px; letter-spacing: -.01em; }
-  .hero-big em { color: var(--accent); }
-  .hero-sub { color: #c4cee0; font-size: 15px; margin: 0 0 22px; }
-  .btn-primary { background: var(--accent); color: #04121c; border: none; border-radius: 999px; padding: 12px 22px; font-weight: 600; font-size: 14px; }
-  .btn-primary:hover { filter: brightness(1.1); border: none; }
-  .hero-chips { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 22px; color: var(--muted); font-size: 12px; }
-  .hero-chips span::before { content: '✓'; color: var(--green); margin-right: 6px; }
-  .mini-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-content: start; }
-  .mini { background: var(--bg-card2); border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 6px; }
-  .mini .stat-label { text-transform: none; font-size: 12px; letter-spacing: 0; }
-  .mini b { font-size: 20px; }
-  .mini.warn { border-color: rgba(255,107,107,.5); }
-  @media (max-width: 1100px) { .hero-card { grid-template-columns: 1fr; } .hero-title { font-size: 36px; } }
+  section { padding: 76px 0; border-top: 1px solid var(--border); }
+  .eyebrow { color: var(--accent); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 12px; }
+  h2 { font-family: var(--serif); font-weight: 400; font-size: 46px; line-height: 1.08; letter-spacing: -.01em; margin: 0 0 14px; max-width: 760px; }
+  h2 em { color: var(--accent); }
+  .sub { color: var(--soft); font-size: 17px; max-width: 640px; margin: 0 0 40px; }
 
-  .content { flex: 1; min-width: 0; }
-  .topbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 24px;
-    border-bottom: 1px solid var(--border);
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-  .topbar .controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-  #fecha { color: var(--muted); font-size: 13px; text-transform: capitalize; }
-  #selectorWrap { display: flex; align-items: center; gap: 12px; }
+  .cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 26px; }
+  .card .n { font-family: var(--serif); font-size: 36px; color: var(--accent); line-height: 1; margin-bottom: 10px; }
+  .card h3 { font-size: 19px; margin: 0 0 8px; }
+  .card p { margin: 0; color: var(--soft); font-size: 15px; }
 
-  main { padding: 20px 24px; max-width: 1200px; }
-  .view { display: none; }
-  h2 { font-size: 16px; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 12px; }
-  h3 { font-size: 15px; margin: 0 0 10px; }
-  h4 { margin: 0 0 10px; font-size: 14px; }
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .step { background: var(--bg-soft); border: 1px solid var(--border); border-radius: 18px; padding: 26px; }
+  .step .n { width: 34px; height: 34px; border-radius: 50%; background: #0f2a45; color: var(--accent); display: grid; place-items: center; font-weight: 700; margin-bottom: 14px; }
+  .step h3 { margin: 0 0 8px; font-size: 18px; }
+  .step p { margin: 0; color: var(--soft); font-size: 15px; }
 
-  .panel {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 16px;
-    margin-bottom: 20px;
-  }
-  .row {
-    display: flex;
-    justify-content: space-between;
-    padding: 6px 0;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    gap: 12px;
-    align-items: center;
-  }
-  .row:last-child { border-bottom: none; }
-  .row.neg b { color: var(--red); }
-  .row.pos b { color: var(--text); }
-  .neg { color: var(--red); }
-  .pos { color: var(--green); }
-  .muted { color: var(--muted); }
-  .alerta {
-    margin-top: 10px;
-    background: rgba(255,92,92,0.1);
-    border: 1px solid var(--red);
-    border-radius: 8px;
-    padding: 10px 14px;
-    font-size: 13px;
-  }
+  .who { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .who .card.soon { opacity: .75; border-style: dashed; }
+  .tag { display: inline-block; font-size: 11px; border-radius: 999px; padding: 3px 10px; margin-bottom: 12px; background: #0f2a45; color: var(--accent); }
+  .tag.gris { background: var(--card2); color: var(--muted); }
 
-  .stats-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
-  .stat-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 16px;
-    flex: 1;
-    min-width: 180px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .stat-card.warn { border-color: var(--red); }
-  .stat-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
-  .stat-value { font-size: 22px; font-weight: 700; }
-  .stat-value.neg { color: var(--red); }
-  .stat-value.pos { color: var(--green); }
-  .stat-sub { color: var(--muted); font-size: 12px; }
+  .final { text-align: center; padding: 96px 0; }
+  .final h2 { margin: 0 auto 14px; }
+  .final .sub { margin: 0 auto 30px; }
 
-  .caucion-grid { display: flex; gap: 16px; flex-wrap: wrap; }
-  .caucion-box {
-    background: var(--bg-card2);
-    border: 1px solid var(--red);
-    border-radius: 10px;
-    padding: 16px;
-    flex: 1;
-    min-width: 260px;
-  }
+  footer { border-top: 1px solid var(--border); padding: 34px 0 46px; color: var(--muted); font-size: 13px; }
+  footer .wrap { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+  footer p { margin: 4px 0; max-width: 560px; }
 
-  .dist-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 13px; }
-  .dist-label { width: 90px; flex-shrink: 0; }
-  .dist-bar-wrap { flex: 1; background: var(--bg-card2); border-radius: 4px; height: 10px; overflow: hidden; }
-  .dist-bar { height: 100%; background: var(--accent); }
-  .dist-pct { width: 55px; text-align: right; color: var(--muted); flex-shrink: 0; }
-  .two-col { display: flex; gap: 16px; flex-wrap: wrap; }
-  .two-col > .panel { flex: 1; min-width: 280px; }
-
-  .barchart { display: flex; align-items: flex-end; gap: 4px; height: 180px; overflow-x: auto; padding-top: 10px; }
-  .barcol { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; flex: 0 0 auto; width: 28px; height: 100%; }
-  .barwrap { flex: 1; display: flex; align-items: flex-end; width: 100%; }
-  .bar { width: 100%; border-radius: 2px 2px 0 0; }
-  .pos-bar { background: var(--green); }
-  .neg-bar { background: var(--red); }
-  .barlabel { font-size: 10px; color: var(--muted); margin-top: 4px; white-space: nowrap; }
-
-  .periodo-tabs, .moneda-toggle { display: flex; gap: 6px; margin-bottom: 16px; }
-  .periodo-btn { background: var(--bg-card); }
-  .periodo-btn.active { background: var(--accent); color: #04121c; border-color: var(--accent); font-weight: 600; }
-
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  thead th {
-    text-align: left;
-    background: var(--bg-card2);
-    padding: 8px;
-    border-bottom: 1px solid var(--border);
-    white-space: nowrap;
+  @media (max-width: 900px) {
+    .hero-grid, .cards, .steps, .who { grid-template-columns: 1fr; }
+    h1 { font-size: 46px; } h2 { font-size: 36px; }
+    .links { display: none; }
   }
-  tbody td, tfoot td {
-    padding: 6px 8px;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-  }
-  tfoot td { font-weight: bold; border-top: 1px solid var(--border); }
-  tbody input {
-    width: 90px;
-    padding: 4px 6px;
-    font-size: 13px;
-  }
-  .table-wrap { overflow-x: auto; }
-
-  #login {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100vh;
-    flex-direction: column;
-    gap: 12px;
-  }
-  #login .box {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 30px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    width: 280px;
-  }
-  #loginError { color: var(--red); font-size: 13px; min-height: 16px; }
-  .fila-caucion td:nth-child(2) { color: var(--red); }
 </style>
 </head>
 <body>
 
-<div id="login">
-  <div class="box">
-    <h3>Posiciones de Clientes</h3>
-    <input type="email" id="emailInput" placeholder="Email" autocomplete="username">
-    <input type="password" id="passInput" placeholder="Contraseña" autocomplete="current-password">
-    <button id="btnLogin">Ingresar</button>
-    <div id="loginError"></div>
-    <p class="muted" style="font-size:11px;margin:0">Con el servidor local conectado, el email se valida contra Gallo.</p>
+<nav class="top">
+  <div class="wrap">
+    <a href="#" class="logo">equanima<i>.</i></a>
+    <div class="links">
+      <a href="#solucion">Solución</a>
+      <a href="#como-funciona">Cómo funciona</a>
+      <a href="#quienes">Para quién</a>
+    </div>
+    <a class="btn btn-ghost" href="app.html">Iniciar sesión</a>
   </div>
-</div>
+</nav>
 
-<div id="app">
-  <aside class="sidebar">
-    <div class="brand"><b>equanima<i>.</i></b><span>Tu cartera, en un solo lugar</span></div>
-    <nav>
-      <div class="navgroup open"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>Inicio</div>
-      <button class="navbtn sub" data-view="dashboardCliente"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v9h9"/></svg>Cartera</button>
-      <button class="navbtn sub" data-view="posiciones"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Posiciones</button>
-      <button class="navbtn sub" data-view="rendimiento"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg>Rendimiento</button>
-      <button class="navbtn" data-view="cauciones"><svg viewBox="0 0 24 24"><path d="M3 10l9-6 9 6M5 10v8M10 10v8M14 10v8M19 10v8M3 20h18"/></svg>Cauciones</button>
-      <button class="navbtn" data-view="carry"><svg viewBox="0 0 24 24"><path d="M7 4L3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg>Carry Trade</button>
-      <div class="navsep"></div>
-      <button class="navbtn" data-view="cargar" data-admin-only="1"><svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg>Cargar archivo</button>
-      <button class="navbtn" data-view="mercado"><svg viewBox="0 0 24 24"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg>Mercado</button>
-      <div class="navsep" data-admin-only="1"></div>
-      <button class="navbtn" data-view="general" data-admin-only="1"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>General</button>
-      <button class="navbtn" data-view="comitentes" data-admin-only="1"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-3.5 3-6 7-6s7 2.5 7 6M17 5a3.5 3.5 0 010 7M22 20c0-2.5-1.5-4.5-4-5.3"/></svg>Comitentes</button>
-    </nav>
-    <div class="bottom">
-      <span id="userBadge" class="muted" style="font-size:12px;display:block;margin-bottom:8px;word-break:break-all;"></span>
-      <button id="btnLogout">Salir</button>
-    </div>
-  </aside>
-
-  <div class="content">
-    <div class="ticker">
-      <div class="ticker-track"><div class="ticker-move" id="tickerMove"></div></div>
-      <div class="mkt-badges" id="mktBadges"></div>
-    </div>
-    <div class="topbar">
-      <span id="fecha"></span>
-      <div class="controls">
-        <div id="selectorWrap">
-          <select id="comitenteSelect"></select>
-        </div>
-        <span id="clienteFijo" style="display:none;font-weight:600"></span>
-        <button id="btnExportar">Exportar estado (JSON)</button>
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <h1>Las carteras de tus comitentes, <em>en un solo lugar.</em></h1>
+      <p class="lead">La plataforma de Equanima para ver posiciones, cauciones y rendimiento de cada cuenta, en pesos y en dólares, con los datos de Gallo.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="app.html">Iniciar sesión →</a>
+        <a class="btn btn-ghost" href="#solucion">Qué hace</a>
+      </div>
+      <div class="badges">
+        <span>Datos de Gallo</span>
+        <span>Solo lectura</span>
+        <span>Cada productor ve solo sus comitentes</span>
       </div>
     </div>
 
-    <main>
-      <div class="view" id="view-general"></div>
-      <div class="view" id="view-dashboardCliente"></div>
-      <div class="view" id="view-posiciones"></div>
-      <div class="view" id="view-rendimiento"></div>
-      <div class="view" id="view-cauciones"></div>
-      <div class="view" id="view-carry"></div>
-      <div class="view" id="view-cargar"></div>
-      <div class="view" id="view-mercado"></div>
-      <div class="view" id="view-comitentes"></div>
-    </main>
+    <div class="mock" aria-hidden="true">
+      <div class="mock-head"><span>Cartera de ejemplo</span><span class="live">En línea</span></div>
+      <div class="mock-title">Capital actual</div>
+      <div class="mock-big">USD 1.250.000</div>
+      <svg viewBox="0 0 300 70" width="100%" height="70" preserveAspectRatio="none">
+        <path d="M0,58 L30,52 L60,56 L90,40 L120,44 L150,30 L180,34 L210,22 L240,26 L270,12 L300,16" fill="none" stroke="#0ea5e9" stroke-width="2.5"/>
+        <path d="M0,58 L30,52 L60,56 L90,40 L120,44 L150,30 L180,34 L210,22 L240,26 L270,12 L300,16 L300,70 L0,70 Z" fill="rgba(14,165,233,.12)"/>
+      </svg>
+      <div class="mock-grid">
+        <div class="mini"><small>Resultado</small><b class="pos">+4,8%</b></div>
+        <div class="mini"><small>Caución tomada</small><b>USD 420.000</b></div>
+        <div class="mini"><small>Apalancamiento</small><b>1,3 veces</b></div>
+        <div class="mini"><small>Dólar de equilibrio</small><b>$ 1.630</b></div>
+      </div>
+      <div class="mock-note">Vista de ejemplo, con números ilustrativos.</div>
+    </div>
   </div>
-</div>
+</header>
 
-<script src="vendor/xlsx.full.min.js"></script>
-<script src="data.js"></script>
-<script src="importar.js"></script>
-<script src="app.js"></script>
+<section id="solucion">
+  <div class="wrap">
+    <div class="eyebrow">Solución</div>
+    <h2>Para qué sirve, <em>en cuatro cosas.</em></h2>
+    <p class="sub">Todo lo que antes había que armar a mano con extractos y planillas, calculado a partir de los movimientos de cada cuenta.</p>
+    <div class="cards">
+      <div class="card">
+        <div class="n">01</div>
+        <h3>Cartera</h3>
+        <p>Posiciones al día de cada comitente, con su valor en pesos y en dólares, la composición y lo que está ganando o perdiendo contra su costo.</p>
+      </div>
+      <div class="card">
+        <div class="n">02</div>
+        <h3>Cauciones y financiamiento</h3>
+        <p>Cuánto debe cada cuenta en pesos y en dólares, el interés que se devenga y cuánto está apalancada.</p>
+      </div>
+      <div class="card">
+        <div class="n">03</div>
+        <h3>Rendimiento real en dólares</h3>
+        <p>Con cuánto empezó, cuánto tiene hoy y cuánto ganó, descontando aportes, retiros y el costo de la caución, al dólar MEP de cada día.</p>
+      </div>
+      <div class="card">
+        <div class="n">04</div>
+        <h3>Carry trade</h3>
+        <p>Para las letras en pesos financiadas con dólares: la ganancia en dólares y el dólar de equilibrio, para ver cuánto margen hay antes del techo de la banda.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="como-funciona" style="background: var(--bg-soft);">
+  <div class="wrap">
+    <div class="eyebrow">Cómo funciona</div>
+    <h2>Entrás y <em>está todo ahí.</em></h2>
+    <p class="sub">No hay nada que instalar ni conectar: la plataforma lee los datos que ya están en Gallo.</p>
+    <div class="steps">
+      <div class="step">
+        <div class="n">1</div>
+        <h3>Iniciás sesión</h3>
+        <p>Con tu usuario de productor. Ves únicamente los comitentes que Gallo te tiene asignados.</p>
+      </div>
+      <div class="step">
+        <div class="n">2</div>
+        <h3>Elegís una cuenta</h3>
+        <p>Cartera, cauciones, rendimiento y carry trade de ese comitente, o el resumen de todos tus clientes juntos.</p>
+      </div>
+      <div class="step">
+        <div class="n">3</div>
+        <h3>Cargás su historial</h3>
+        <p>Subís el Activity de Gallo del comitente y la plataforma reconstruye sus ganancias realizadas y las contrasta con la tenencia actual.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="quienes">
+  <div class="wrap">
+    <div class="eyebrow">Para quién</div>
+    <h2>Hoy para productores. <em>Mañana para cada cliente.</em></h2>
+    <p class="sub">Empezamos por el equipo de Equanima. Más adelante, cada cliente va a poder entrar con el mismo mail que tiene en Gallo y ver solo su cartera.</p>
+    <div class="who">
+      <div class="card">
+        <span class="tag">Disponible</span>
+        <h3>Productores</h3>
+        <p>Seguimiento de todos tus comitentes en un solo lugar, con el resultado de cada cuenta y su nivel de endeudamiento.</p>
+      </div>
+      <div class="card soon">
+        <span class="tag gris">Próximamente</span>
+        <h3>Clientes</h3>
+        <p>Acceso individual de solo lectura: cada cliente ve su propia cartera, su rendimiento y su historial.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="final">
+  <div class="wrap">
+    <h2>Todas las carteras, <em>en un solo lugar.</em></h2>
+    <p class="sub">Entrá con tu usuario de productor.</p>
+    <a class="btn btn-primary" href="app.html">Iniciar sesión →</a>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <div class="logo" style="color:var(--text)">equanima<i>.</i></div>
+      <p>Equanima Securities. Agente de Liquidación y Compensación, CNV matrícula N° 191.</p>
+    </div>
+    <div>
+      <p>La información de esta plataforma es de carácter informativo y no constituye asesoramiento financiero ni una oferta de inversión. Los resultados mostrados dependen de los datos disponibles y pueden diferir de los registros oficiales de la sociedad.</p>
+    </div>
+  </div>
+</footer>
+
 </body>
 </html>

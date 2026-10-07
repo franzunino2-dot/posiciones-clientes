@@ -1050,7 +1050,7 @@ async function doLogin() {
 
 function logout() {
   sessionStorage.removeItem("sesion");
-  location.reload();
+  location.href = "index.html";
 }
 
 function init() {
