@@ -372,6 +372,41 @@ app.post('/api/ganancias/:id', requireAuth, async (req, res) => {
   }
 });
 
+// ---------- Calendario de pagos ----------
+// Cronograma de cupones y amortizaciones por 100 VN. Dos fuentes: bonistas.com (bonos, Bopreal, letras,
+// ONs) y, para las ONs, el archivo ons_flujos.json que mantiene ../rentafija. Se cachea 1 hora en memoria
+// y en disco (si bonistas no responde se usa la última copia).
+const PAGOS_CACHE = path.join(__dirname, 'pagos-cache.json');
+const ONS_FLUJOS_FILE = path.join(__dirname, '..', 'rentafija', 'ons_flujos.json');
+let pagosMem = { val: null, exp: 0 };
+async function cargarPagos() {
+  if (pagosMem.val && Date.now() < pagosMem.exp) return pagosMem.val;
+  let bonistas = null;
+  try {
+    const r = await axios.get('https://bonistas.com/proximos-pagos', { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', Accept: 'text/html' }, timeout: 15000, responseType: 'text' });
+    const html = String(r.data);
+    const ini = html.indexOf('id="__NEXT_DATA__"');
+    const desde = ini < 0 ? -1 : html.indexOf('>', ini) + 1;
+    const hasta = desde > 0 ? html.indexOf('</script>', desde) : -1;
+    const lista = hasta > desde ? (JSON.parse(html.slice(desde, hasta))?.props?.pageProps?.initialPayments || []) : [];
+    if (lista.length) {
+      bonistas = {};
+      lista.forEach(p => { (bonistas[String(p.symbol).toUpperCase()] = bonistas[String(p.symbol).toUpperCase()] || []).push([p.fecha, p.cupon || 0, p.principal || 0, /USD/i.test(p.moneda) ? 'USD' : 'ARS']); });
+    }
+  } catch (e) { /* se usa la copia guardada */ }
+  let ons = null;
+  try { const j = JSON.parse(fs.readFileSync(ONS_FLUJOS_FILE, 'utf8')); ons = {}; Object.entries(j).forEach(([base, o]) => { ons[base] = { moneda: /USD/i.test(o.mon) ? 'USD' : 'ARS', flujos: o.flows }; }); } catch (e) { /* sin ons_flujos */ }
+  let val = { bonistas, ons, generado: new Date().toISOString() };
+  if (val.bonistas) { try { fs.writeFileSync(PAGOS_CACHE, JSON.stringify(val)); } catch (e) { /* ignorar */ } }
+  else { try { val = JSON.parse(fs.readFileSync(PAGOS_CACHE, 'utf8')); if (ons) val.ons = ons; } catch (e) { /* sin copia */ } }
+  pagosMem = { val, exp: Date.now() + 3600000 };
+  return val;
+}
+app.get('/api/pagos', requireAuth, async (req, res) => {
+  try { res.json({ ok: true, ...(await cargarPagos()) }); }
+  catch (e) { res.status(502).json({ ok: false, error: e.message }); }
+});
+
 app.listen(PORT, () => {
   console.log(`Posiciones de Clientes escuchando en http://localhost:${PORT}`);
   console.log(GALLO_ON ? '✅ Gallo configurado (GALLO_BASE=' + GALLO_BASE + ')' : '⚠️  Gallo NO configurado — solo funcionará el login admin y el modo demo del front');

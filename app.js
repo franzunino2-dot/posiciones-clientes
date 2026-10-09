@@ -880,6 +880,7 @@ async function cargarDolares() {
   } catch (e) { /* sin internet: el ticker muestra solo las especies */ }
   renderTicker();
   if (vistaActual === "mercado") render();
+  if (typeof clienteVista !== "undefined" && clienteVista.id) renderCliente();
 }
 
 function bymaAbierto() {
@@ -1054,13 +1055,24 @@ function logout() {
 }
 
 function init() {
-  document.querySelectorAll(".navbtn").forEach(b => {
+  document.querySelectorAll(".navbtn[data-view]").forEach(b => {
     if (b.dataset.adminOnly === "1" && !esAdmin()) return;
     b.addEventListener("click", () => irAVista(b.dataset.view));
   });
   if (!esAdmin()) document.querySelectorAll("[data-admin-only]").forEach(b => b.style.display = "none");
   cargarDolares();
   setInterval(cargarDolares, 120000);
+
+  // El comitente ve solo la vista simple (Inicio / Portafolio / Calendario), nunca el panel de productor.
+  if (!esAdmin()) {
+    document.getElementById("btnLogout").addEventListener("click", logout);
+    abrirVistaCliente(sesion.comitenteId, false);
+    return;
+  }
+  document.getElementById("btnVerCliente").addEventListener("click", () => {
+    const id = document.getElementById("comitenteSelect").value;
+    if (id) abrirVistaCliente(id, true);
+  });
 
   if (esAdmin()) {
     document.getElementById("selectorWrap").style.removeProperty("display");

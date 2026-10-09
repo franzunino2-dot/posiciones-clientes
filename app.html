@@ -244,6 +244,95 @@
   }
   #loginError { color: var(--red); font-size: 13px; min-height: 16px; }
   .fila-caucion td:nth-child(2) { color: var(--red); }
+
+  /* ---------- Vista del comitente (tema claro, simple) ---------- */
+  #clienteApp { display: none; min-height: 100vh; background: #f4f6fa; color: #0f1b2d; font-family: -apple-system, Segoe UI, Roboto, sans-serif; }
+  #clienteApp button { background: none; border: none; color: inherit; font: inherit; padding: 0; border-radius: 0; cursor: pointer; }
+  #clienteApp button:hover { border: none; }
+  #clienteApp button:disabled { opacity: .35; cursor: not-allowed; }
+  .cv-staff { background: #0f2a45; color: #cfe8f8; font-size: 13px; padding: 8px 20px; text-align: center; }
+  .cv-staff button { color: #7dd3fc !important; font-weight: 600; margin-left: 8px; }
+  .cv-head { display: flex; align-items: center; gap: 28px; padding: 14px 28px; background: #fff; border-bottom: 1px solid #e5e9f0; flex-wrap: wrap; position: sticky; top: 0; z-index: 5; }
+  .cv-brand { font-family: var(--serif); font-size: 28px; letter-spacing: -.01em; }
+  .cv-brand i { color: #0ea5e9; }
+  .cv-tabs { display: flex; gap: 6px; flex: 1; }
+  .cv-tabs button { padding: 8px 16px !important; border-radius: 999px !important; font-size: 14px; font-weight: 500; color: #5b6b82; }
+  .cv-tabs button:hover { background: #eef2f7; }
+  .cv-tabs button.on { background: #e0f2fe; color: #0369a1; font-weight: 600; }
+  .cv-right { display: flex; align-items: center; gap: 14px; }
+  .cv-mon { display: flex; background: #eef2f7; border-radius: 999px; padding: 3px; }
+  .cv-mon button { padding: 6px 14px !important; border-radius: 999px !important; font-size: 13px; font-weight: 500; color: #5b6b82; }
+  .cv-mon button.on { background: #fff; color: #0f1b2d; font-weight: 600; box-shadow: 0 1px 3px rgba(15,27,45,.12); }
+  .cv-salir { font-size: 13px; color: #5b6b82 !important; }
+  .cv-main { max-width: 1080px; margin: 0 auto; padding: 28px 20px 20px; }
+  .cv-hola { font-family: var(--serif); font-size: 34px; margin-bottom: 16px; }
+  .cv-resumen { background: #fff; border: 1px solid #e5e9f0; border-radius: 18px; padding: 26px 30px; display: flex; gap: 60px; flex-wrap: wrap; margin-bottom: 18px; }
+  .cv-etq { font-size: 13px; color: #6b7a90; }
+  .cv-total { font-family: var(--serif); font-size: 52px; line-height: 1.1; letter-spacing: -.01em; }
+  .cv-saldo { font-size: 26px; font-weight: 600; margin: 6px 0 2px; }
+  .cv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+  .cv-grid-port { grid-template-columns: 1.1fr 1fr; }
+  .cv-grid-cal { grid-template-columns: 1.6fr 1fr; align-items: start; }
+  .cv-card { background: #fff; border: 1px solid #e5e9f0; border-radius: 18px; padding: 22px 24px; margin-bottom: 18px; }
+  .cv-grid .cv-card { margin-bottom: 0; }
+  .cv-card-h { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .cv-card-h h3 { font-size: 17px; margin: 0; font-weight: 600; }
+  .cv-link { color: #0369a1 !important; font-size: 13px; font-weight: 600; }
+  .cv-fila { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid #eef1f6; }
+  .cv-fila:last-child { border-bottom: none; }
+  .cv-fila b { font-weight: 600; }
+  .cv-fila > div:first-child b, .cv-fila > div:first-child .cv-sub { display: block; }
+  .cv-der { text-align: right; }
+  .cv-der .cv-sub { display: block; }
+  .cv-sub { color: #6b7a90; font-size: 12px; font-weight: 400; display: block; }
+  .cv-verde { color: #0f9d6c; }
+  .cv-rojo { color: #d94a4a; }
+  .cv-vacio { color: #6b7a90; font-size: 14px; padding: 12px 0; margin: 0; }
+  .cv-nota { color: #6b7a90; font-size: 12px; margin: 14px 0 0; line-height: 1.5; }
+  .cv-sep { height: 1px; background: #e5e9f0; margin: 6px 0; }
+  .cv-tot { font-size: 16px; }
+  .cv-tabla { overflow-x: auto; }
+  #clienteApp table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  #clienteApp thead th { background: none; color: #6b7a90; font-weight: 500; font-size: 12px; padding: 8px 10px; border-bottom: 1px solid #e5e9f0; text-align: left; }
+  #clienteApp tbody td { padding: 12px 10px; border-bottom: 1px solid #eef1f6; vertical-align: middle; }
+  #clienteApp td.n, #clienteApp th.n { text-align: right; white-space: nowrap; }
+  #clienteApp tr.cv-saldo-fila td { background: #f8fafc; }
+  .cv-donut-wrap { display: flex; align-items: center; gap: 26px; flex-wrap: wrap; }
+  .cv-donut { width: 190px; height: 190px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; }
+  .cv-donut > div { width: 120px; height: 120px; border-radius: 50%; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  .cv-donut b { font-size: 13px; font-weight: 600; padding: 0 6px; }
+  .cv-leyenda { list-style: none; padding: 0; margin: 0; flex: 1; min-width: 140px; }
+  .cv-leyenda li { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 5px 0; }
+  .cv-leyenda li i { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+  .cv-leyenda li span { margin-left: auto; color: #6b7a90; }
+  .cv-nav { display: flex; gap: 6px; }
+  .cv-nav button { width: 32px; height: 32px; border-radius: 50% !important; background: #eef2f7 !important; font-size: 18px; line-height: 1; }
+  .cv-semana, .cv-mes { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cv-semana span { text-align: center; font-size: 12px; color: #6b7a90; padding: 4px 0 8px; }
+  .cv-dia { min-height: 72px; border-radius: 10px; padding: 6px; background: #f8fafc; display: flex; flex-direction: column; gap: 3px; overflow: hidden; }
+  .cv-dia.vacio { background: none; }
+  .cv-dia.con { background: #f0f9ff; }
+  .cv-dia.hoy { outline: 2px solid #0ea5e9; }
+  .cv-num { font-size: 12px; color: #6b7a90; }
+  .cv-chip { background: #0ea5e9; color: #fff; font-size: 10px; font-weight: 600; border-radius: 5px; padding: 1px 5px; width: fit-content; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .cv-chip.am { background: #0f9d6c; }
+  .cv-mas { font-size: 10px; color: #6b7a90; }
+  .cv-barras { display: grid; grid-template-columns: repeat(12, 1fr); gap: 8px; height: 150px; align-items: end; }
+  .cv-barra { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 6px; border-radius: 8px !important; }
+  .cv-barra-v { display: block; width: 100%; background: #bae6fd; border-radius: 6px 6px 0 0; min-height: 0; }
+  .cv-barra.on .cv-barra-v { background: #0ea5e9; }
+  .cv-barra-l { font-size: 11px; color: #6b7a90; }
+  .cv-foot { max-width: 1080px; margin: 10px auto 0; padding: 18px 20px 40px; color: #8493a8; font-size: 11px; line-height: 1.5; }
+  @media (max-width: 820px) {
+    .cv-grid, .cv-grid-port, .cv-grid-cal { grid-template-columns: 1fr; }
+    .cv-head { gap: 12px; padding: 12px 16px; }
+    .cv-tabs { order: 3; flex-basis: 100%; }
+    .cv-right { margin-left: auto; }
+    .cv-total { font-size: 38px; }
+    .cv-resumen { gap: 24px; padding: 20px; }
+    .cv-dia { min-height: 54px; padding: 4px; }
+    .cv-chip { font-size: 9px; padding: 0 3px; }
+  }
 </style>
 </head>
 <body>
@@ -260,6 +349,8 @@
   </div>
 </div>
 
+<div id="clienteApp"></div>
+
 <div id="app">
   <aside class="sidebar">
     <div class="brand"><b>equanima<i>.</i></b><span>Tu cartera, en un solo lugar</span></div>
@@ -272,6 +363,7 @@
       <button class="navbtn" data-view="carry"><svg viewBox="0 0 24 24"><path d="M7 4L3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg>Carry Trade</button>
       <div class="navsep"></div>
       <button class="navbtn" data-view="cargar" data-admin-only="1"><svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg>Cargar archivo</button>
+      <button class="navbtn" id="btnVerCliente" data-admin-only="1"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"/></svg>Ver como cliente</button>
       <button class="navbtn" data-view="mercado"><svg viewBox="0 0 24 24"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg>Mercado</button>
       <div class="navsep" data-admin-only="1"></div>
       <button class="navbtn" data-view="general" data-admin-only="1"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>General</button>
@@ -317,5 +409,6 @@
 <script src="data.js"></script>
 <script src="importar.js"></script>
 <script src="app.js"></script>
+<script src="cliente.js"></script>
 </body>
 </html>
