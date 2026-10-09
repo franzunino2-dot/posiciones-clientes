@@ -137,7 +137,8 @@ function render() {
   clienteActualId = esAdmin() ? sel.value : sesion.comitenteId;
   const cli = clientesVisibles.find(c => c.id === clienteActualId);
 
-  if (vistaActual === "general") renderDashboard(clientesVisibles);
+  if (vistaActual === "alyc") renderAlyc(clientesVisibles);
+  else if (vistaActual === "general") renderDashboard(clientesVisibles);
   else if (vistaActual === "dashboardCliente") renderDashboardCliente(cli);
   else if (vistaActual === "posiciones") renderPosiciones(cli);
   else if (vistaActual === "rendimiento") renderRendimiento(cli);
@@ -962,7 +963,7 @@ let LIVE_CLIENTES = null; // null = modo demo (data.js); array = modo live (Gall
 function esAdmin() {
   // "admin"/"productor" ven la app completa (selector, edición) sobre su propio universo de
   // comitentes — el backend ya restringe qué comitentes le llegan a cada uno.
-  return sesion && (sesion.rol === "admin" || sesion.rol === "productor");
+  return sesion && (sesion.rol === "admin" || sesion.rol === "productor" || sesion.rol === "alyc");
 }
 
 function resolverSesionDemo(email, pass) {
@@ -971,6 +972,7 @@ function resolverSesionDemo(email, pass) {
   if (mail === ADMIN_EMAIL.toLowerCase()) {
     return { email: mail, rol: "admin", comitenteId: null };
   }
+  if (mail === "general") return { email: mail, rol: "alyc", comitenteId: null };
   const cliente = CLIENTES.find(c => (c.email || "").toLowerCase() === mail);
   if (cliente) return { email: mail, rol: "cliente", comitenteId: cliente.id };
   return null;
@@ -1059,6 +1061,7 @@ function init() {
     if (b.dataset.adminOnly === "1" && !esAdmin()) return;
     b.addEventListener("click", () => irAVista(b.dataset.view));
   });
+  if (sesion.rol !== "alyc") document.querySelectorAll("[data-alyc-only]").forEach(b => b.style.display = "none");
   if (!esAdmin()) document.querySelectorAll("[data-admin-only]").forEach(b => b.style.display = "none");
   cargarDolares();
   setInterval(cargarDolares, 120000);
@@ -1095,7 +1098,7 @@ function init() {
   }
   document.getElementById("btnLogout").addEventListener("click", logout);
   document.getElementById("fecha").textContent = new Date().toLocaleDateString("es-AR", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-  irAVista(esAdmin() ? "general" : "dashboardCliente");
+  irAVista(sesion.rol === "alyc" ? "alyc" : esAdmin() ? "general" : "dashboardCliente");
 }
 
 document.addEventListener("DOMContentLoaded", () => {

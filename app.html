@@ -340,7 +340,7 @@
 <div id="login">
   <div class="box">
     <h3>Posiciones de Clientes</h3>
-    <input type="email" id="emailInput" placeholder="Email" autocomplete="username">
+    <input type="text" id="emailInput" placeholder="Email o usuario" autocomplete="username">
     <input type="password" id="passInput" placeholder="Contraseña" autocomplete="current-password">
     <button id="btnLogin">Ingresar</button>
     <a href="index.html" class="muted" style="font-size:12px;text-align:center">← Volver al inicio</a>
@@ -355,6 +355,7 @@
   <aside class="sidebar">
     <div class="brand"><b>equanima<i>.</i></b><span>Tu cartera, en un solo lugar</span></div>
     <nav>
+      <button class="navbtn" data-view="alyc" data-alyc-only="1"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Panel ALyC</button>
       <div class="navgroup open"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>Inicio</div>
       <button class="navbtn sub" data-view="dashboardCliente"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v9h9"/></svg>Cartera</button>
       <button class="navbtn sub" data-view="posiciones"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Posiciones</button>
@@ -392,6 +393,7 @@
     </div>
 
     <main>
+      <div class="view" id="view-alyc"></div>
       <div class="view" id="view-general"></div>
       <div class="view" id="view-dashboardCliente"></div>
       <div class="view" id="view-posiciones"></div>
@@ -409,6 +411,7 @@
 <script src="data.js"></script>
 <script src="importar.js"></script>
 <script src="app.js"></script>
+<script src="alyc.js"></script>
 <script src="cliente.js"></script>
 </body>
 </html>

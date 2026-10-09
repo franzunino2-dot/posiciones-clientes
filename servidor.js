@@ -41,6 +41,8 @@ const APP_PASSWORD = process.env.APP_PASSWORD || '091218';
 // Admin (ve todos los comitentes): SOLO si se define ADMIN_EMAIL en .env. Por defecto no hay admin:
 // cada productor ve únicamente los comitentes que Gallo le asigna (Manager).
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase();
+// Usuario de la ALyC (ve todos los comitentes y productores): se define con ALYC_USER en .env. Mismo APP_PASSWORD.
+const ALYC_USER = (process.env.ALYC_USER || '').trim().toLowerCase();
 // Productores cuyo mail no figura en la lista de Managers de Gallo: "mail=códigoManager;mail=código".
 const PRODUCTOR_EMAILS = {};
 String(process.env.PRODUCTOR_EMAILS || '').split(';').forEach(p => { const [m, c] = p.split('='); if (m && c) PRODUCTOR_EMAILS[m.trim().toLowerCase()] = c.trim(); });
@@ -277,6 +279,18 @@ app.get('/api/debug/portafolio/:cod', requireAdmin, (req, res) => {
   res.json({ ok: true, activos: (p.activos || []).map(a => ({ tipoActivo: a.tipoActivo, ticker: a.ticker, cantidad: a.cantidad, precio: a.precio, importe: a.importe, costo: a.costo })) });
 });
 
+// Productores con el mail que tienen cargado en Gallo (con ese mail entran). Solo para la ALyC.
+app.get('/api/productores', requireAuth, async (req, res) => {
+  if (req.sesion.rol !== 'alyc' && req.sesion.rol !== 'admin') return res.status(403).json({ ok: false, error: 'Solo la ALyC' });
+  try {
+    const { managers } = await getIdentidad();
+    const extra = {}; Object.entries(PRODUCTOR_EMAILS).forEach(([mail, cod]) => { (extra[cod] = extra[cod] || []).push(mail); });
+    res.json({ ok: true, productores: managers.filter(m => m && m.Codigo != null).map(m => ({
+      codigo: String(m.Codigo), nombre: m.Nombre || '', email: (m.Email || '').trim().toLowerCase(), extra: extra[String(m.Codigo)] || [],
+    })) });
+  } catch (e) { res.status(502).json({ ok: false, error: e.message }); }
+});
+
 app.get('/api/estado', (req, res) => {
   const portafolio = leerPortafolios();
   res.json({
@@ -293,6 +307,12 @@ app.post('/api/login', async (req, res) => {
     const pass = String(req.body?.password || '');
     if (pass !== APP_PASSWORD) return res.status(401).json({ ok: false, error: 'Contraseña incorrecta' });
     if (!email) return res.status(400).json({ ok: false, error: 'Falta email' });
+
+    if (ALYC_USER && email === ALYC_USER) {
+      const token = nuevoToken();
+      sesiones.set(token, { email, rol: 'alyc', comitenteId: null });
+      return res.json({ ok: true, token, email, rol: 'alyc' });
+    }
 
     if (ADMIN_EMAIL && email === ADMIN_EMAIL) {
       const token = nuevoToken();
@@ -338,7 +358,7 @@ async function comitentesVisibles(sesion) {
   const todos = await armarComitentes();
   const gan = leerGanancias();
   todos.forEach(c => { if (gan[c.id]) { c.ganancias = gan[c.id].ganancias; c.gananciasInfo = { cargado: gan[c.id].cargado, archivo: gan[c.id].archivo, por: gan[c.id].por }; } });
-  if (sesion.rol === 'admin') return todos;
+  if (sesion.rol === 'admin' || sesion.rol === 'alyc') return todos;
   if (sesion.rol === 'productor') return todos.filter(c => c.managerId === sesion.managerId); // el productor ve los comitentes cuyo Manager es él
   return todos.filter(c => c.id === sesion.comitenteId);
 }
