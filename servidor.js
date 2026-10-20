@@ -28,6 +28,8 @@ const https = require('https');
 const app = express();
 const PORT = Number(process.env.PORT || 5501);
 app.use(express.json());
+// Archivos con datos de comitentes: solo por la API (con sesión), nunca como archivo estático.
+app.use((req, res, next) => /^\/(ganancias|actividad)\.json$/i.test(req.path) ? res.status(404).end() : next());
 app.use(express.static(__dirname));
 
 // ---------- Conexión a Gallo (EGWS) ----------
@@ -41,6 +43,8 @@ const APP_PASSWORD = process.env.APP_PASSWORD || '091218';
 // Admin (ve todos los comitentes): SOLO si se define ADMIN_EMAIL en .env. Por defecto no hay admin:
 // cada productor ve únicamente los comitentes que Gallo le asigna (Manager).
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase();
+// Acceso de comitentes: por ahora apagado (solo entran managers y la ALyC). Se prende con CLIENTES_HABILITADOS=1 en .env.
+const CLIENTES_HABILITADOS = ['1', 'true', 'si'].includes(String(process.env.CLIENTES_HABILITADOS || '').toLowerCase());
 // Usuario de la ALyC (ve todos los comitentes y productores): se define con ALYC_USER en .env. Mismo APP_PASSWORD.
 const ALYC_USER = (process.env.ALYC_USER || '').trim().toLowerCase();
 // Productores cuyo mail no figura en la lista de Managers de Gallo: "mail=códigoManager;mail=código".
@@ -337,6 +341,9 @@ app.post('/api/login', async (req, res) => {
       return res.json({ ok: true, token, email, rol: 'productor', managerId });
     }
     const cli = clientes.find(c => (c.Email || '').toLowerCase() === email);
+    if (cli && !CLIENTES_HABILITADOS) {
+      return res.status(403).json({ ok: false, error: 'Por ahora el acceso es solo para managers. El acceso de comitentes se habilita más adelante.' });
+    }
     if (cli) {
       const token = nuevoToken();
       const comitenteId = String(cli.CodigoComitente);
@@ -425,6 +432,23 @@ async function cargarPagos() {
 app.get('/api/pagos', requireAuth, async (req, res) => {
   try { res.json({ ok: true, ...(await cargarPagos()) }); }
   catch (e) { res.status(502).json({ ok: false, error: e.message }); }
+});
+
+// ---------- Actividad (movimientos de la cuenta) ----------
+// actividad.json (gitignored, solo en esta máquina) = { "1238": [ { f, a, d, m, t, c, q, p, n } ] }. Cada comitente
+// ve solo la suya; el productor, las de su cartera; la ALyC, todas (lo decide comitentesVisibles).
+const ACTIVIDAD_FILE = path.join(__dirname, 'actividad.json');
+app.get('/api/actividad/:id', requireAuth, async (req, res) => {
+  try {
+    const id = String(req.params.id).replace(/[^0-9]/g, '');
+    const visibles = await comitentesVisibles(req.sesion);
+    if (!visibles.some(c => c.id === id)) return res.status(403).json({ ok: false, error: 'Esa cuenta no es de tu cartera' });
+    let todo = {};
+    try { todo = JSON.parse(fs.readFileSync(ACTIVIDAD_FILE, 'utf8')); } catch (e) { /* todavía no hay archivo */ }
+    res.json({ ok: true, movimientos: Array.isArray(todo[id]) ? todo[id] : [] });
+  } catch (e) {
+    res.status(502).json({ ok: false, error: e.message });
+  }
 });
 
 app.listen(PORT, () => {

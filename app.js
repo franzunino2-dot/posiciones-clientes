@@ -29,7 +29,9 @@ function saveOverrides(data) {
 // mano y guardado en el navegador.
 function getClientes() {
   const overrides = loadOverrides();
-  const fuente = LIVE_CLIENTES || CLIENTES;
+  let fuente = LIVE_CLIENTES || CLIENTES;
+  // La ALyC mirando como un manager ve solo los comitentes de ese manager.
+  if (sesion && sesion.rolReal === "alyc" && sesion.rol === "productor" && sesion.managerId) fuente = fuente.filter(c => c.managerId === sesion.managerId);
   return fuente.map(base => {
     const ov = overrides[base.id];
     if (!ov) return JSON.parse(JSON.stringify(base));
@@ -973,8 +975,7 @@ function resolverSesionDemo(email, pass) {
     return { email: mail, rol: "admin", comitenteId: null };
   }
   if (mail === "general") return { email: mail, rol: "alyc", comitenteId: null };
-  const cliente = CLIENTES.find(c => (c.email || "").toLowerCase() === mail);
-  if (cliente) return { email: mail, rol: "cliente", comitenteId: cliente.id };
+  // Por ahora solo entran managers y la ALyC; el acceso de comitentes se habilita más adelante.
   return null;
 }
 
@@ -1002,6 +1003,7 @@ async function checkLogin() {
     try { await cargarComitentesLive(sesion.token); }
     catch (e) { document.getElementById("loginError").textContent = "Se perdió la conexión con Gallo — volvé a entrar."; sessionStorage.removeItem("sesion"); return; }
   }
+  if (sesion.rolReal === "alyc" && !sesion.perfilElegido) { mostrarSelectorPerfil(); return; }
   document.getElementById("login").style.display = "none";
   document.getElementById("app").style.display = "flex";
   init();
@@ -1045,7 +1047,10 @@ async function doLogin() {
   }
 
   sesion = resultado;
+  // El usuario de la ALyC ("general") elige con qué perfil entra: manager, cliente o el panel general.
+  if (sesion.rol === "alyc") { sesion.rolReal = "alyc"; sesion.perfilElegido = false; }
   sessionStorage.setItem("sesion", JSON.stringify(sesion));
+  if (sesion.rolReal === "alyc") { mostrarSelectorPerfil(); return; }
   document.getElementById("login").style.display = "none";
   document.getElementById("app").style.display = "flex";
   init();
@@ -1090,7 +1095,12 @@ function init() {
     fijo.style.display = "inline";
   }
 
-  document.getElementById("userBadge").textContent = (LIVE_CLIENTES ? "🟢 En vivo (Gallo) — " : "⚪ Modo demo — ") + sesion.email;
+  document.getElementById("userBadge").textContent = (LIVE_CLIENTES ? "🟢 En vivo (Gallo) — " : "⚪ Modo demo — ") + sesion.email + (sesion.perfilNombre ? " · mirando como " + sesion.perfilNombre : "");
+  if (sesion.rolReal === "alyc") {
+    const bp = document.getElementById("btnCambiarPerfil");
+    bp.style.display = "block";
+    bp.addEventListener("click", cambiarPerfil);
+  }
   if (esAdmin()) {
     document.getElementById("btnExportar").addEventListener("click", exportarEstado);
   } else {
