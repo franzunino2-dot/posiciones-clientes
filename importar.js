@@ -1,7 +1,7 @@
 // Importador de archivos "Activity" de Gallo (Excel con todas las operaciones de un comitente).
 // Reconstruye las ganancias realizadas (costo promedio ponderado) y las contrasta con la tenencia actual.
 
-const IMP_COMPRAS = ["CPRA", "COTR", "CPU$", "CPUC", "CRCN", "CBLO", "EJPC"];
+const IMP_COMPRAS = ["CPRA", "COTR", "CPU$", "CPUC", "CRCN", "CRCM", "CNGC", "CBLO", "EJPC"];
 const IMP_VENTAS = ["VTAS", "VTU$", "VTUC", "VRCM", "VRCN", "VBLO"];
 const IMP_INGRESOS = ["DETR"]; // títulos que ingresan a la cuenta (ej. transferidos de otro broker), valuados al ingreso
 const IMP_EGRESOS = ["RTTR"];  // títulos que salen de la cuenta, sin resultado

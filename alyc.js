@@ -53,8 +53,25 @@ function accesoProductor(cod) {
   return mails.length ? mails.map(esc).join("<br>") : '<span class="neg">Sin mail en Gallo</span>';
 }
 
+// Estado de la bajada automática del historial de Gallo (movimientos y ganancias de cada cuenta).
+async function cargarHistorialEstado() {
+  const el = document.getElementById("histEstado");
+  if (!el || !sesion || !sesion.token) return;
+  try {
+    const r = await fetch("/api/historial/estado", { headers: { Authorization: "Bearer " + sesion.token } });
+    const j = await r.json();
+    if (!j.ok) return;
+    const hora = j.terminada ? new Date(j.terminada).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" }) : null;
+    el.textContent = j.corriendo
+      ? "Historial de Gallo: bajando cuentas… " + j.hechas + " de " + j.total + " (" + j.cuentas + " guardadas)"
+      : "Historial de Gallo: " + j.cuentas + " cuentas guardadas" + (hora ? " · última bajada " + hora : "") + (j.errores ? " · " + j.errores + " con error" : "");
+    if (j.corriendo) setTimeout(cargarHistorialEstado, 15000);
+  } catch (e) { /* sin estado */ }
+}
+
 function renderAlyc(clientes) {
   cargarProductoresAlyc();
+  setTimeout(cargarHistorialEstado, 0);
   const el = document.getElementById("view-alyc");
   const total = clientes.reduce((a, c) => a + valorAlyc(c, c.totalPortfolio || 0), 0);
   const conFinanciacion = clientes.filter(c => (c.pesos.cuentaCorriente || 0) < 0 || (c.dolares.cuentaCorrienteUSD || 0) < 0).length;
@@ -83,6 +100,7 @@ function renderAlyc(clientes) {
       <h1 class="hero-title" style="margin-bottom:6px">Hola, ${esc(sesion.email)}. <span class="soft">Panel de la <em>ALyC.</em></span></h1>
       <div class="moneda-toggle">${botones}</div>
     </div>
+    <p id="histEstado" class="muted" style="font-size:12px;margin:0 0 10px"></p>
     <div class="stats-row">
       <div class="stat-card"><span class="stat-label">Productores</span><span class="stat-value">${productores.length}</span><span class="stat-sub">con comitentes asignados</span></div>
       <div class="stat-card"><span class="stat-label">Comitentes</span><span class="stat-value">${clientes.length}</span><span class="stat-sub">${clientes.reduce((a, c) => a + (c.detallePesos || []).length + (c.detalleDolares || []).length, 0)} tenencias</span></div>

@@ -29,7 +29,7 @@ const app = express();
 const PORT = Number(process.env.PORT || 5501);
 app.use(express.json());
 // Archivos con datos de comitentes: solo por la API (con sesión), nunca como archivo estático.
-app.use((req, res, next) => /^\/(ganancias|actividad)\.json$/i.test(req.path) ? res.status(404).end() : next());
+app.use((req, res, next) => /^\/(ganancias|actividad|pagos-cache)\.json$|^\/historial(\/|$)/i.test(req.path) ? res.status(404).end() : next());
 app.use(express.static(__dirname));
 
 // ---------- Conexión a Gallo (EGWS) ----------
@@ -124,6 +124,8 @@ async function getIdentidad() {
 // evita pedirle lo mismo dos veces desde dos procesos distintos).
 
 const PORTAFOLIO_FILE = path.join(__dirname, '..', 'rentafija', 'gallo_portafolios.json');
+// Historial completo de cada cuenta (CtaCte + CtaCteMonedaExt de Gallo): actividad y ganancias realizadas.
+const historial = require('./historial').crearHistorial({ galloPost, listarComitentes: async () => Object.keys(leerPortafolios()) });
 function leerPortafolios() {
   try { return JSON.parse(fs.readFileSync(PORTAFOLIO_FILE, 'utf8')); }
   catch (e) { return {}; }
@@ -217,7 +219,7 @@ function requireAuth(req, res, next) {
 function requireAdmin(req, res, next) {
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '') || req.query.token;
   const sesion = sesiones.get(token);
-  if (!sesion || sesion.rol !== 'admin') return res.status(401).json({ ok: false, error: 'Solo admin' });
+  if (!sesion || (sesion.rol !== 'admin' && sesion.rol !== 'alyc')) return res.status(401).json({ ok: false, error: 'Solo admin o ALyC' });
   next();
 }
 
@@ -265,12 +267,16 @@ app.get('/api/debug/probe/:metodo', requireAdmin, async (req, res) => {
   try {
     const r = await galloPost(metodo, body);
     const resu = r && (r.Resultado || r.resultado);
-    const arr = Array.isArray(resu) ? resu : (resu && Array.isArray(resu.Detalle) ? resu.Detalle : null);
+    let arr = Array.isArray(resu) ? resu : (resu && Array.isArray(resu.Detalle) ? resu.Detalle : null);
+    // CtaCteMonedaExt agrupa las filas en Detalle[].Movimientos: se aplanan para contar.
+    if (arr && arr[0] && Array.isArray(arr[0].Movimientos)) arr = arr.flatMap(g => g.Movimientos || []);
+    const distintos = (campo, max) => arr ? [...new Set(arr.map(x => x[campo]).filter(Boolean))].slice(0, max) : null;
     res.json({
       metodo, enviado: Object.keys(body), IsOK: r?.IsOK ?? null, Error: r?.Error || null,
       topKeys: resu && !Array.isArray(resu) ? Object.keys(resu) : null,
       filas: arr ? arr.length : null,
       keysFila: arr && arr[0] ? Object.keys(arr[0]) : null,
+      comprobantes: distintos('Operacion', 40), ejemplosEspecie: distintos('Especie', 6),
       fechas: arr ? (() => { const f = arr.map(x => x.FechaOperacion).filter(Boolean); return { primera: f[f.length - 1] || null, ultima: f[0] || null, saldoAnterior: arr.some(x => x.Operacion === 'S.A.') }; })() : null,
     });
   } catch (e) { res.status(502).json({ ok: false, error: String(e.message || '').slice(0, 200), data: e.response?.data ? String(JSON.stringify(e.response.data)).slice(0, 300) : null }); }
@@ -364,7 +370,11 @@ function leerGanancias() { try { return JSON.parse(fs.readFileSync(GANANCIAS_FIL
 async function comitentesVisibles(sesion) {
   const todos = await armarComitentes();
   const gan = leerGanancias();
-  todos.forEach(c => { if (gan[c.id]) { c.ganancias = gan[c.id].ganancias; c.gananciasInfo = { cargado: gan[c.id].cargado, archivo: gan[c.id].archivo, por: gan[c.id].por }; } });
+  todos.forEach(c => {
+    const auto = historial.gananciasDe(c.id);
+    if (auto) { c.ganancias = auto.ganancias; c.gananciasInfo = { cargado: auto.actualizado, archivo: 'Gallo (cuenta corriente)', por: 'automático' }; }
+    else if (gan[c.id]) { c.ganancias = gan[c.id].ganancias; c.gananciasInfo = { cargado: gan[c.id].cargado, archivo: gan[c.id].archivo, por: gan[c.id].por }; }
+  });
   if (sesion.rol === 'admin' || sesion.rol === 'alyc') return todos;
   if (sesion.rol === 'productor') return todos.filter(c => c.managerId === sesion.managerId); // el productor ve los comitentes cuyo Manager es él
   return todos.filter(c => c.id === sesion.comitenteId);
@@ -443,15 +453,37 @@ app.get('/api/actividad/:id', requireAuth, async (req, res) => {
     const id = String(req.params.id).replace(/[^0-9]/g, '');
     const visibles = await comitentesVisibles(req.sesion);
     if (!visibles.some(c => c.id === id)) return res.status(403).json({ ok: false, error: 'Esa cuenta no es de tu cartera' });
+    const auto = historial.movimientosDe(id);
+    if (auto) return res.json({ ok: true, origen: 'gallo', movimientos: auto });
     let todo = {};
     try { todo = JSON.parse(fs.readFileSync(ACTIVIDAD_FILE, 'utf8')); } catch (e) { /* todavía no hay archivo */ }
-    res.json({ ok: true, movimientos: Array.isArray(todo[id]) ? todo[id] : [] });
+    res.json({ ok: true, origen: 'archivo', movimientos: Array.isArray(todo[id]) ? todo[id] : [] });
   } catch (e) {
     res.status(502).json({ ok: false, error: e.message });
   }
 });
 
+// Estado y refresco del historial automático. Solo la ALyC puede lanzar la bajada de todas las cuentas.
+app.get('/api/historial/estado', requireAuth, (req, res) => {
+  if (req.sesion.rol !== 'alyc' && req.sesion.rol !== 'admin') return res.status(403).json({ ok: false, error: 'Solo la ALyC' });
+  res.json({ ok: true, ...historial.estado() });
+});
+app.post('/api/historial/refrescar', requireAuth, (req, res) => {
+  if (req.sesion.rol !== 'alyc' && req.sesion.rol !== 'admin') return res.status(403).json({ ok: false, error: 'Solo la ALyC' });
+  historial.refrescarTodas(!!(req.body && req.body.forzar)).catch(() => {});
+  res.json({ ok: true, ...historial.estado() });
+});
+app.post('/api/historial/:id/refrescar', requireAuth, async (req, res) => {
+  try {
+    const id = String(req.params.id).replace(/[^0-9]/g, '');
+    const visibles = await comitentesVisibles(req.sesion);
+    if (!visibles.some(c => c.id === id)) return res.status(403).json({ ok: false, error: 'Esa cuenta no es de tu cartera' });
+    res.json({ ok: true, resumen: await historial.actualizar(id) });
+  } catch (e) { res.status(502).json({ ok: false, error: String(e.message || e).slice(0, 200) }); }
+});
+
 app.listen(PORT, () => {
   console.log(`Posiciones de Clientes escuchando en http://localhost:${PORT}`);
+  if (GALLO_ON) historial.iniciar();
   console.log(GALLO_ON ? '✅ Gallo configurado (GALLO_BASE=' + GALLO_BASE + ')' : '⚠️  Gallo NO configurado — solo funcionará el login admin y el modo demo del front');
 });

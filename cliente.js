@@ -470,7 +470,7 @@ function cvActividad(cli) {
       <tbody>${filas || `<tr><td colspan="8" class="cv-vacio">No hay movimientos con ese filtro.</td></tr>`}</tbody>
     </table></div>
     ${lista.length > f.n ? `<div class="cv-mas-wrap"><button class="cv-btn" onclick="cvActMas()">Mostrar más</button></div>` : ""}
-    <p class="cv-nota">Movimientos de tu cuenta en pesos: compras, ventas, dividendos, retenciones y movimientos de fondos. Los montos son netos de comisión y derechos.</p>`);
+    <p class="cv-nota">Movimientos de tu cuenta en pesos y en dólares: compras, ventas, dividendos, retenciones y movimientos de fondos. Los montos son netos de comisión y derechos.</p>`);
 }
 
 // ---------- Calendario ----------
