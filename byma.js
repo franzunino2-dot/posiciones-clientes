@@ -124,7 +124,9 @@ async function snapshot(nombresExtra) {
   const [lider, general, cedears, bonos, letras, ons, indices] = await Promise.all(
     ['lider', 'general', 'cedears', 'bonos', 'letras', 'ons', 'indices'].map(k => feed(k).catch(() => []))
   );
-  const [dol, cri, us, d9bon, d9let] = await Promise.all([dolar(), cripto(), accionesUS(), d912('arg_bonds'), d912('arg_notes')]);
+  const [dol, cri, us, d9bon, d9let, d9us] = await Promise.all([dolar(), cripto(), accionesUS(), d912('arg_bonds'), d912('arg_notes'), d912('usa_stocks')]);
+  // Mapa de EE.UU.: las acciones más operadas del día (precio por cantidad operada, en dólares).
+  const usMapa = Object.values(d9us || {}).filter(x => x.c > 3 && x.v > 0 && x.pct_change != null).map(x => ({ t: x.symbol, p: x.c, pct: x.pct_change, vol: x.c * x.v })).sort((a, b) => b.vol - a.vol).slice(0, 150);
 
   const solo = (rows, filtro) => Object.values(porSimbolo(rows.filter(filtro)));
   const ars = x => (x.denominationCcy || 'ARS') === 'ARS';
@@ -161,7 +163,7 @@ async function snapshot(nombresExtra) {
   const v = {
     ok: true, ts: Date.now(),
     acciones, generalAcc, cedears: ced, bonos: bon, bonosTodos, letras: letrasTodas, ons: onsTodas, indices: idx,
-    us: us || [], cripto: cri || [],
+    us: us || [], usMapa, cripto: cri || [],
     dolar: (dol || []).filter(d => ['oficial', 'blue', 'bolsa', 'contadoconliqui', 'cripto'].includes(d.casa)).map(d => ({ casa: d.casa, nombre: d.nombre, compra: d.compra, venta: d.venta, ts: d.fechaActualizacion })),
     nombres: { ...(nombresExtra || {}), ...NOMBRES },
   };
@@ -262,4 +264,4 @@ async function ficha(t, src, nombresExtra) {
   return { ok: true, item: it, mep: hoyMep, ars: pesosHoy, usd: dolarHoy, ...stats, serie: conv, aprox };
 }
 
-module.exports = { snapshot, minigraficos, buscar, ficha };
+module.exports = { snapshot, minigraficos, buscar, ficha, usaStocks: () => d912('usa_stocks') };

@@ -152,6 +152,16 @@
   .mk-stats b { font-size: 15px; }
   .mk-vacio { color: var(--muted); font-size: 13px; margin: 6px 0; }
   .mk-nota { color: var(--muted); font-size: 11px; margin: 8px 0 0; }
+  /* Mercado > Mapa */
+  .mp-caja { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
+  .mp-leyenda { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; font-size: 11px; color: var(--muted); }
+  .mp-leyenda i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+  .mp-cont { position: relative; width: 100%; overflow: hidden; border-radius: 8px; }
+  .mp-t { position: absolute; box-sizing: border-box; border: 1px solid var(--bg-card); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #fff; cursor: pointer; overflow: hidden; line-height: 1.15; transition: filter .12s; }
+  .mp-t:hover { filter: brightness(1.18); z-index: 2; outline: 2px solid #fff; }
+  .mp-sec { position: absolute; z-index: 1; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.75); pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mp-t b { font-weight: 700; letter-spacing: .01em; }
+  .mp-t span { opacity: .9; }
   .perfil-salir { align-self: flex-start; background: none; border: none; color: var(--muted); padding: 4px 0; }
 
   .sidebar {
@@ -566,7 +576,7 @@
       <button class="navbtn" id="btnVerCliente" data-admin-only="1"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"/></svg>Ver como cliente</button>
       <div class="navgroup open"><svg viewBox="0 0 24 24"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg>Mercado</div>
       <button class="navbtn sub" data-view="mercado"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5c0-1 1-1.7 2.5-1.7s2.5.7 2.5 1.7-1 1.5-2.5 1.8-2.5.8-2.5 1.8 1 1.7 2.5 1.7 2.5-.7 2.5-1.7"/></svg>Contado</button>
-      <button class="navbtn sub" disabled style="opacity:.4;cursor:default" title="Próximamente"><svg viewBox="0 0 24 24"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/></svg>Mapa</button>
+      <button class="navbtn sub" data-view="mapa"><svg viewBox="0 0 24 24"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/></svg>Mapa</button>
       <button class="navbtn sub" disabled style="opacity:.4;cursor:default" title="Próximamente"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg>Fondos</button>
       <button class="navbtn sub" disabled style="opacity:.4;cursor:default" title="Próximamente"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8"/></svg>Noticias</button>
       <div class="navsep" data-admin-only="1"></div>
@@ -607,6 +617,7 @@
       <div class="view" id="view-cauciones"></div>
       <div class="view" id="view-carry"></div>
       <div class="view" id="view-mercado"></div>
+      <div class="view" id="view-mapa"></div>
       <div class="view" id="view-comitentes"></div>
     </main>
   </div>
@@ -620,6 +631,7 @@
 <script src="manager.js"></script>
 <script src="resultado.js"></script>
 <script src="mercado-ui.js"></script>
+<script src="mapa-ui.js"></script>
 <script src="cliente.js"></script>
 </body>
 </html>

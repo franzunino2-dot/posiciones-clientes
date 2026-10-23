@@ -150,6 +150,7 @@ function render() {
   else if (vistaActual === "carry") renderCarryTrade(clientesVisibles);
   else if (vistaActual === "comitentes") renderVistaGeneral(clientesVisibles);
   else if (vistaActual === "mercado") renderMercadoContado();
+  else if (vistaActual === "mapa") renderMapa();
   renderTicker();
 }
 
