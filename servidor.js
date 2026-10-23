@@ -45,6 +45,8 @@ const APP_PASSWORD = process.env.APP_PASSWORD || '091218';
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase();
 // Acceso de comitentes: por ahora apagado (solo entran managers y la ALyC). Se prende con CLIENTES_HABILITADOS=1 en .env.
 const CLIENTES_HABILITADOS = ['1', 'true', 'si'].includes(String(process.env.CLIENTES_HABILITADOS || '').toLowerCase());
+// Si se define, solo entran los comitentes de esos managers (códigos separados por coma). Vacío = todos.
+const CLIENTES_MANAGERS = String(process.env.CLIENTES_MANAGERS || '').split(',').map(s => s.trim()).filter(Boolean);
 // Usuario de la ALyC (ve todos los comitentes y productores): se define con ALYC_USER en .env. Mismo APP_PASSWORD.
 const ALYC_USER = (process.env.ALYC_USER || '').trim().toLowerCase();
 // Productores cuyo mail no figura en la lista de Managers de Gallo: "mail=códigoManager;mail=código".
@@ -376,15 +378,21 @@ app.post('/api/login', async (req, res) => {
       sesiones.set(token, { email, rol: 'productor', managerId, comitenteId: null });
       return res.json({ ok: true, token, email, rol: 'productor', managerId });
     }
-    const cli = clientes.find(c => (c.Email || '').toLowerCase() === email);
-    if (cli && !CLIENTES_HABILITADOS) {
+    // Un mismo mail puede estar en varias cuentas (familia, sociedad): el cliente las ve todas.
+    const cuentas = clientes.filter(c => (c.Email || '').trim().toLowerCase() === email);
+    if (cuentas.length && !CLIENTES_HABILITADOS) {
       return res.status(403).json({ ok: false, error: 'Por ahora el acceso es solo para managers. El acceso de comitentes se habilita más adelante.' });
     }
-    if (cli) {
+    const habilitadas = cuentas.filter(c => !CLIENTES_MANAGERS.length || CLIENTES_MANAGERS.includes(String(c.Manager ?? '')));
+    if (cuentas.length && !habilitadas.length) {
+      return res.status(403).json({ ok: false, error: 'Tu acceso todavía no está habilitado. Consultá con tu manager.' });
+    }
+    if (habilitadas.length) {
       const token = nuevoToken();
-      const comitenteId = String(cli.CodigoComitente);
-      sesiones.set(token, { email, rol: 'cliente', comitenteId });
-      return res.json({ ok: true, token, email, rol: 'cliente', comitenteId });
+      const comitenteIds = habilitadas.map(c => String(c.CodigoComitente));
+      const comitenteId = comitenteIds[0];
+      sesiones.set(token, { email, rol: 'cliente', comitenteId, comitenteIds });
+      return res.json({ ok: true, token, email, rol: 'cliente', comitenteId, comitenteIds });
     }
     return res.status(404).json({ ok: false, error: 'Email no encontrado en Gallo (ni como productor ni como comitente)' });
   } catch (e) {
@@ -407,7 +415,8 @@ async function comitentesVisibles(sesion) {
   });
   if (sesion.rol === 'admin' || sesion.rol === 'alyc') return todos;
   if (sesion.rol === 'productor') return todos.filter(c => c.managerId === sesion.managerId); // el productor ve los comitentes cuyo Manager es él
-  return todos.filter(c => c.id === sesion.comitenteId);
+  const mias = sesion.comitenteIds && sesion.comitenteIds.length ? sesion.comitenteIds : [sesion.comitenteId];
+  return todos.filter(c => mias.includes(c.id));
 }
 
 app.get('/api/comitentes', requireAuth, async (req, res) => {

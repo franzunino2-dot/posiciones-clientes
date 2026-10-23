@@ -1055,7 +1055,7 @@ async function doLogin() {
     });
     const data = await r.json();
     if (data.ok) {
-      resultado = { email: email.trim().toLowerCase(), rol: data.rol, comitenteId: data.comitenteId || null, managerId: data.managerId || null, token: data.token };
+      resultado = { email: email.trim().toLowerCase(), rol: data.rol, comitenteId: data.comitenteId || null, comitenteIds: data.comitenteIds || null, managerId: data.managerId || null, token: data.token };
     } else if (r.status !== 503) {
       // 503 = "Gallo no configurado en este server" → cae al modo demo. Cualquier otro
       // rechazo (contraseña/email inválidos) es una respuesta real, no un problema de conexión.

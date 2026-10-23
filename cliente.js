@@ -246,6 +246,7 @@ function renderCliente() {
     ${clienteVista.staff ? `<div class="cv-staff">Estás viendo la cuenta como la ve el cliente · <button onclick="cerrarVistaCliente()">← Volver al panel</button></div>` : ""}
     <header class="cv-head">
       <div class="cv-brand">equanima<i>.</i></div>
+      ${!clienteVista.staff && sesion && sesion.comitenteIds && sesion.comitenteIds.length > 1 ? `<select class="cv-cta" onchange="abrirVistaCliente(this.value, false)" aria-label="Cuenta">${sesion.comitenteIds.map(id => { const c = getClientes().find(x => x.id === id); return `<option value="${esc(id)}" ${id === clienteVista.id ? "selected" : ""}>${esc(id)}${c ? " · " + esc(titulo(c.nombre || "")) : ""}</option>`; }).join("")}</select>` : ""}
       <nav class="cv-tabs">${tabs.map(([k, n]) => `<button class="${clienteVista.tab === k ? "on" : ""}" onclick="cvTab('${k}')">${n}</button>`).join("")}</nav>
       <div class="cv-right">
         <div class="cv-mon">${monedas.map(([k, n]) => `<button class="${mon === k ? "on" : ""}" ${tasas[k] ? "" : "disabled"} onclick="cvMoneda('${k}')">${n}</button>`).join("")}</div>
