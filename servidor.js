@@ -560,38 +560,34 @@ app.get('/api/mercado/graficos', requireAuth, async (req, res) => {
   catch (e) { res.status(502).json({ ok: false, error: String(e.message || e).slice(0, 200) }); }
 });
 
-// ---------- Fondos comunes de inversión (Fonditos) ----------
-// Los datos salen de la API de Fonditos (CAFCI/CNV). La clave va en .env (FONDITOS_KEY) y nunca viaja al navegador:
-// el servidor hace los pedidos y se cachean unos minutos para cuidar la cuota diaria de la clave.
-const FONDITOS_BASE = 'https://api.fonditos.ar/v1';
-const FONDITOS_RUTAS = new Set(['funds', 'funds/search', 'funds/names', 'funds/ranking', 'funds/detail', 'funds/history', 'funds/returns', 'funds/compare', 'taxonomy',
-  'holdings', 'holdings/summary', 'holdings/bond-metrics', 'holdings/by-asset', 'holdings/search-assets', 'top', 'compare', 'rates/mercado', 'macro/series', 'stats', 'me']);
-const cacheFonditos = new Map();
-async function fonditos(ruta, query) {
-  const key = (process.env.FONDITOS_KEY || '').trim();
-  if (!key) { const e = new Error('Falta la clave de Fonditos (FONDITOS_KEY en el archivo .env)'); e.sinClave = true; throw e; }
-  const clave = ruta + '?' + JSON.stringify(query || {});
-  const c = cacheFonditos.get(clave);
-  if (c && Date.now() - c.ts < (ruta === 'me' ? 30000 : 10 * 60000)) return c.v;
-  const r = await axios.get(FONDITOS_BASE + '/' + ruta, { params: query, headers: { Authorization: 'Bearer ' + key, Accept: 'application/json' }, timeout: 30000, paramsSerializer: { indexes: null } });
-  cacheFonditos.set(clave, { ts: Date.now(), v: r.data });
-  return r.data;
+// ---------- Fondos comunes de inversión (Fonditos, por su servidor MCP) ----------
+// La clave (FONDITOS_KEY en .env) permite 50 consultas por día: fonditos.js guarda cada respuesta en disco y cuenta el cupo.
+const fonditosMcp = require('./fonditos');
+const textoOpt = v => (v == null || v === '' ? undefined : String(v));
+const numOpt = v => { const n = parseInt(v, 10); return isFinite(n) ? n : undefined; };
+const sinVacios = o => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined));
+function rutaFondos(ruta, herramienta, args) {
+  app.get('/api/fondos/' + ruta, requireAuth, async (req, res) => {
+    try {
+      const a = args(req.query);
+      if (a === null) return res.status(400).json({ ok: false, error: 'Faltan datos para la consulta' });
+      const r = await fonditosMcp.llamar(herramienta, sinVacios(a));
+      res.json({ ok: true, ts: r.ts, cache: r.cache, vencido: !!r.vencido, ...fonditosMcp.estado(), datos: r.datos });
+    } catch (e) {
+      res.status(e.codigo === 'sinClave' ? 503 : e.codigo === 'cupo' ? 429 : 502).json({ ok: false, codigo: e.codigo || null, error: String(e.message || e).slice(0, 240), ...fonditosMcp.estado() });
+    }
+  });
 }
-app.get('/api/fondos/estado', requireAuth, async (req, res) => {
-  if (!(process.env.FONDITOS_KEY || '').trim()) return res.json({ ok: true, configurado: false });
-  try { res.json({ ok: true, configurado: true, me: await fonditos('me') }); }
-  catch (e) { res.json({ ok: true, configurado: true, error: String(e.response && e.response.data && (e.response.data.message || e.response.data.error) || e.message).slice(0, 200) }); }
-});
-app.get(/^\/api\/fondos\/(.+)$/, requireAuth, async (req, res) => {
-  const ruta = req.params[0].replace(/\/+$/, '');
-  if (!FONDITOS_RUTAS.has(ruta) || ruta === 'me') return res.status(404).json({ ok: false, error: 'Ruta no disponible' });
-  try { res.json(await fonditos(ruta, req.query)); }
-  catch (e) {
-    if (e.sinClave) return res.status(503).json({ ok: false, sinClave: true, error: e.message });
-    const st = e.response && e.response.status;
-    res.status(st && st < 500 ? st : 502).json({ ok: false, error: String(e.response && e.response.data && (e.response.data.message || e.response.data.error) || e.message).slice(0, 240) });
-  }
-});
+app.get('/api/fondos/estado', requireAuth, (req, res) => res.json({ ok: true, ...fonditosMcp.estado() }));
+rutaFondos('ranking', 'ranking_fondos', q => ({ periodo: textoOpt(q.periodo) || '30d', categoria: textoOpt(q.categoria), subcategoria: textoOpt(q.subcategoria), clase: textoOpt(q.clase), limite: numOpt(q.limite) || 20 }));
+rutaFondos('buscar', 'buscar_fondos', q => (textoOpt(q.q) ? { q: textoOpt(q.q), limite: numOpt(q.limite) || 8 } : null));
+rutaFondos('ficha', 'ficha_fondo', q => (textoOpt(q.fondo) ? { fondo: textoOpt(q.fondo) } : null));
+rutaFondos('serie', 'serie_fondo', q => (textoOpt(q.fondo) ? { fondo: textoOpt(q.fondo), dias: numOpt(q.dias), from: textoOpt(q.from), to: textoOpt(q.to) } : null));
+rutaFondos('comparar', 'comparar_fondos', q => (textoOpt(q.fondos) ? { fondos: String(q.fondos).split('|').filter(Boolean).slice(0, 6), from: textoOpt(q.from), to: textoOpt(q.to) } : null));
+rutaFondos('peers', 'rendimiento_vs_peers', q => (textoOpt(q.fondo) ? { fondo: textoOpt(q.fondo) } : null));
+rutaFondos('lista', 'listar_fondos', q => ({ categoria: textoOpt(q.categoria), limite: numOpt(q.limite) || 50 }));
+rutaFondos('tasas', 'tasas_mercado', q => ({ fecha: textoOpt(q.fecha) }));
+rutaFondos('cer', 'serie_cer', q => ({ from: textoOpt(q.from), to: textoOpt(q.to) }));
 
 app.get('/api/mercado/sp500', requireAuth, async (req, res) => {
   try { res.json(await require('./sp500').mapa(await byma.usaStocks())); }

@@ -151,6 +151,7 @@ function render() {
   else if (vistaActual === "comitentes") renderVistaGeneral(clientesVisibles);
   else if (vistaActual === "mercado") renderMercadoContado();
   else if (vistaActual === "mapa") renderMapa();
+  else if (vistaActual === "fondos") renderFondos();
   renderTicker();
 }
 
