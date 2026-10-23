@@ -137,6 +137,7 @@ function render() {
     sel.value = clienteActualId || clientes[0].id;
   }
   clienteActualId = esAdmin() ? sel.value : sesion.comitenteId;
+  if (esAdmin() && VISTAS_CON_SELECTOR.includes(vistaActual) && clienteActualId) actualizarCuentaEnVivo(clienteActualId);
   const cli = clientesVisibles.find(c => c.id === clienteActualId);
 
   if (vistaActual === "alyc") renderAlyc(clientesVisibles);
@@ -950,6 +951,31 @@ function exportarEstado() {
   a.download = `posiciones_${todayStr()}.json`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+// ---------- Actualización en vivo de una cuenta ----------
+// Al abrir una cuenta se le pide a Gallo su posición e historial en el momento. El servidor ya los baja solo
+// cada tanto, pero así la cuenta que se está mirando queda al día.
+const VIVO = { ult: {}, texto: "" };
+function pintarVivo() { document.querySelectorAll(".vivo-estado").forEach(el => { el.textContent = VIVO.texto; }); }
+async function actualizarCuentaEnVivo(id, forzar) {
+  if (!sesion || !sesion.token || !id || !LIVE_CLIENTES) return;
+  const t = VIVO.ult[id];
+  if (!forzar && t && Date.now() - t < 60000) return;
+  VIVO.ult[id] = Date.now();
+  VIVO.texto = "Actualizando…"; pintarVivo();
+  try {
+    const r = await fetch("/api/cuenta/" + encodeURIComponent(id) + "/actualizar", { method: "POST", headers: { Authorization: "Bearer " + sesion.token } });
+    const j = await r.json();
+    if (j.ok && j.comitente) {
+      const i = LIVE_CLIENTES.findIndex(c => c.id === id);
+      if (i >= 0) LIVE_CLIENTES[i] = j.comitente; else LIVE_CLIENTES.push(j.comitente);
+      VIVO.texto = "Actualizado " + new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+      if (clienteVista.id === id) { ACT = null; ACT_ESTADO = "pendiente"; cargarActividadCliente(); }
+    } else { VIVO.texto = "No se pudo actualizar"; VIVO.ult[id] = 0; }
+  } catch (e) { VIVO.texto = "No se pudo actualizar"; VIVO.ult[id] = 0; }
+  pintarVivo();
+  if (clienteVista.id) renderCliente(); else render();
 }
 
 // ---------- Login ----------

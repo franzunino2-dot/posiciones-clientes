@@ -198,6 +198,7 @@ function abrirVistaCliente(id, staff) {
   window.scrollTo(0, 0);
   cargarPagosCliente();
   cargarActividadCliente();
+  actualizarCuentaEnVivo(id);
   renderCliente();
 }
 
@@ -248,11 +249,12 @@ function renderCliente() {
       <nav class="cv-tabs">${tabs.map(([k, n]) => `<button class="${clienteVista.tab === k ? "on" : ""}" onclick="cvTab('${k}')">${n}</button>`).join("")}</nav>
       <div class="cv-right">
         <div class="cv-mon">${monedas.map(([k, n]) => `<button class="${mon === k ? "on" : ""}" ${tasas[k] ? "" : "disabled"} onclick="cvMoneda('${k}')">${n}</button>`).join("")}</div>
+        <span class="cv-vivo vivo-estado">${esc(VIVO.texto)}</span><button class="cv-act" onclick="actualizarCuentaEnVivo(clienteVista.id, true)" title="Actualizar ahora" aria-label="Actualizar ahora">↻</button>
         ${clienteVista.staff ? "" : `<button class="cv-salir" onclick="logout()">Salir</button>`}
       </div>
     </header>
     <main class="cv-main">${cuerpo}</main>
-    <footer class="cv-foot">Equanima Securities · ALyC, CNV matrícula N° 191. Información de solo lectura, tomada de tu cuenta; los valores son indicativos y pueden diferir de las liquidaciones.${PAGOS_ESTADO === "error" ? " No se pudo cargar el cronograma de pagos." : ""}</footer>`;
+    <footer class="cv-foot">Equanima Securities · ALyC, CNV matrícula N° 191. ${cli.actualizado ? " Posición al " + new Date(cli.actualizado).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short", hour12: false }) + "." : ""} Información de solo lectura, tomada de tu cuenta; los valores son indicativos y pueden diferir de las liquidaciones.${PAGOS_ESTADO === "error" ? " No se pudo cargar el cronograma de pagos." : ""}</footer>`;
 }
 
 function cvTarjeta(titulo, cuerpo, accion) {

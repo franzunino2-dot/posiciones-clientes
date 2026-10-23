@@ -118,7 +118,7 @@ function crearHistorial({ galloPost, listarComitentes }) {
     for (let i = 0; i < 4; i++) {
       try {
         const r = await fn();
-        if (r && r.IsOK === false && /token|duplicate|sesi[oó]n|autorizada/i.test(String(r.Error || ''))) throw new Error(r.Error);
+        if (r && r.IsOK === false && /token|duplicate|sesi[oó]n|autorizada|solicitud/i.test(String(r.Error || ''))) throw new Error(r.Error);
         return r;
       } catch (e) { ultimo = e; await dormir(1500 * (i + 1)); }
     }

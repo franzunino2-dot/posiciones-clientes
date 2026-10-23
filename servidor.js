@@ -126,9 +126,30 @@ async function getIdentidad() {
 const PORTAFOLIO_FILE = path.join(__dirname, '..', 'rentafija', 'gallo_portafolios.json');
 // Historial completo de cada cuenta (CtaCte + CtaCteMonedaExt de Gallo): actividad y ganancias realizadas.
 const historial = require('./historial').crearHistorial({ galloPost, listarComitentes: async () => Object.keys(leerPortafolios()) });
+// Posición en vivo: al abrir una cuenta se le pide a Gallo su portafolio en el momento y se usa por encima
+// de la última bajada del crawler (que refresca cada cuenta cada ~45 minutos).
+const portafolioFresco = {}; // código -> { activos, resumen, ts }
 function leerPortafolios() {
-  try { return JSON.parse(fs.readFileSync(PORTAFOLIO_FILE, 'utf8')); }
-  catch (e) { return {}; }
+  let base = {};
+  try { base = JSON.parse(fs.readFileSync(PORTAFOLIO_FILE, 'utf8')); } catch (e) { /* sin archivo */ }
+  Object.entries(portafolioFresco).forEach(([id, p]) => { if (!base[id] || p.ts > (base[id].ts || 0)) base[id] = p; });
+  return base;
+}
+function parsePortafolio(r) {
+  const resu = galloResultado(r);
+  const n2 = v => { const n = parseFloat(String(v).replace(',', '.')); return isFinite(n) ? n : 0; };
+  const activos = [];
+  (resu.Activos || []).forEach(a => {
+    (a.Subtotal || []).forEach(sub => {
+      if (!sub.CodigoEspecie) return; // filas de resumen de efectivo, sin especie real
+      activos.push({
+        tipoActivo: a.TipoActivo || '', ticker: String(sub.Ticker || '').trim(), especie: sub.Especie || sub.NombreEspecieReducido || '',
+        cantidad: n2(sub.Cantidad), precio: n2(sub.Precio), importe: n2(sub.Importe), costo: n2(sub.Costo),
+        variacionPct: n2(sub.Variacion), resultado: n2(sub.Resultado), codigoEspecie: sub.CodigoEspecie || '',
+      });
+    });
+  });
+  return { resumen: resu.Totales || {}, activos };
 }
 
 // ---------- Adaptador: forma de Gallo -> forma que espera app.js/data.js ----------
@@ -461,6 +482,48 @@ app.get('/api/actividad/:id', requireAuth, async (req, res) => {
   } catch (e) {
     res.status(502).json({ ok: false, error: e.message });
   }
+});
+
+// Actualiza una cuenta en el momento: portafolio (posición y saldos) e historial (actividad y ganancias).
+// Devuelve la cuenta ya armada. Se pide al abrir una cuenta; un mismo pedido repetido en 15 s reusa el anterior.
+const cuentaEnCurso = {};
+// El crawler de rentafija usa el mismo usuario de Gallo: si inicia sesión justo en el medio, el token de acá
+// queda inválido. Se reintenta con una pausa antes de dar el pedido por perdido.
+async function reintentar(fn, veces = 4) {
+  let ult;
+  for (let i = 0; i < veces; i++) {
+    try { return await fn(); }
+    catch (e) { ult = e; if (!/token|sesi[oó]n|autorizada|duplicate|solicitud/i.test(String(e && e.message || e))) break; await new Promise(r => setTimeout(r, 1200 * (i + 1))); }
+  }
+  throw ult;
+}
+app.post('/api/cuenta/:id/actualizar', requireAuth, async (req, res) => {
+  try {
+    const id = String(req.params.id).replace(/[^0-9]/g, '');
+    const visibles = await comitentesVisibles(req.sesion);
+    if (!visibles.some(c => c.id === id)) return res.status(403).json({ ok: false, error: 'Esa cuenta no es de tu cartera' });
+    const previo = cuentaEnCurso[id];
+    let tarea = previo && Date.now() - previo.t < 15000 ? previo.p : null;
+    if (!tarea) {
+      tarea = Promise.allSettled([
+        reintentar(async () => {
+          const r = await galloPost('PortafolioReducido', { comi: id });
+          if (!r || r.IsOK === false) throw new Error(String(r && r.Error || 'sin respuesta').slice(0, 120));
+          portafolioFresco[id] = { ...parsePortafolio(r), ts: Date.now() };
+        }),
+        reintentar(() => historial.actualizar(id)),
+      ]);
+      cuentaEnCurso[id] = { t: Date.now(), p: tarea };
+    }
+    const [pf, hs] = await tarea;
+    if (pf.status === 'rejected' && hs.status === 'rejected') return res.status(502).json({ ok: false, error: String(pf.reason && pf.reason.message || 'Gallo no respondió').slice(0, 160) });
+    const actual = (await comitentesVisibles(req.sesion)).find(c => c.id === id);
+    res.json({
+      ok: true, comitente: actual, portafolio: pf.status === 'fulfilled', historial: hs.status === 'fulfilled', ts: Date.now(),
+      ...(pf.status === 'rejected' ? { errorPortafolio: String(pf.reason && pf.reason.message || pf.reason).slice(0, 160) } : {}),
+      ...(hs.status === 'rejected' ? { errorHistorial: String(hs.reason && hs.reason.message || hs.reason).slice(0, 160) } : {}),
+    });
+  } catch (e) { res.status(502).json({ ok: false, error: String(e.message || e).slice(0, 200) }); }
 });
 
 // Estado y refresco del historial automático. Solo la ALyC puede lanzar la bajada de todas las cuentas.
