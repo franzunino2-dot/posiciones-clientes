@@ -80,7 +80,7 @@ function fdPintarRanking() {
   box.innerHTML = `
     <section class="mk-card">
       <h3>RANKING POR RENTABILIDAD${d ? ` · ${mkEsc(d.from)} al ${mkEsc(d.to)}` : ""}</h3>
-      <div class="pl-presets" style="margin-bottom:10px" id="fdFiltros">
+      <div class="mk-pills" id="fdFiltros">
         ${FD_PERIODOS.map(([p, n]) => `<button class="${FD.periodo === p ? "on" : ""}" onclick="fdPeriodo('${p}')">${n}</button>`).join("")}
         <select onchange="fdCategoria(this.value)" style="margin-left:auto"><option value="">Todas las categorías</option>${FD_CATEGORIAS.map(c => `<option value="${c}" ${FD.categoria === c ? "selected" : ""}>${fdTit(c)}</option>`).join("")}</select>
       </div>

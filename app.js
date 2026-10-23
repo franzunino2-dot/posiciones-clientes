@@ -152,6 +152,7 @@ function render() {
   else if (vistaActual === "mercado") renderMercadoContado();
   else if (vistaActual === "mapa") renderMapa();
   else if (vistaActual === "fondos") renderFondos();
+  else if (vistaActual === "calendario") renderCalendario(clientesVisibles);
   renderTicker();
 }
 

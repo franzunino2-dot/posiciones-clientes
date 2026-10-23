@@ -152,6 +152,28 @@
   .mk-stats b { font-size: 15px; }
   .mk-vacio { color: var(--muted); font-size: 13px; margin: 6px 0; }
   .mk-nota { color: var(--muted); font-size: 11px; margin: 8px 0 0; }
+  .mk-pills { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 12px; }
+  .mk-pills button { padding: 6px 12px; border-radius: 999px; font-size: 13px; }
+  .mk-pills button.on { background: var(--accent); color: #04121c; border-color: var(--accent); font-weight: 600; }
+  .mk-pills input[type=search], .mk-pills select { padding: 7px 10px; font-size: 13px; }
+  /* Calendario de pagos del manager */
+  .cal-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-bottom: 16px; }
+  .cal-tile { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+  .cal-tile span { display: block; font-size: 11px; letter-spacing: .06em; color: var(--muted); margin-bottom: 4px; }
+  .cal-tile b { display: block; font-size: 20px; font-weight: 600; }
+  .cal-tile small { color: var(--muted); font-size: 12px; }
+  .cal-bars { display: flex; gap: 6px; align-items: flex-end; height: 170px; padding-top: 18px; }
+  .cal-col { flex: 1; min-width: 26px; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; }
+  .cal-col .cal-v { font-size: 10px; color: var(--muted); white-space: nowrap; }
+  .cal-col .cal-stack { width: 100%; display: flex; flex-direction: column-reverse; justify-content: flex-start; flex: 1; min-height: 0; }
+  .cal-col .cal-stack i { display: block; width: 100%; }
+  .cal-col .cal-stack i.cup { background: var(--accent); border-radius: 3px 3px 0 0; }
+  .cal-col .cal-stack i.am { background: var(--green); }
+  .cal-col .cal-m { font-size: 11px; color: var(--muted); }
+  .cal-ley { display: flex; gap: 16px; font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .cal-ley i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; }
+  tr.cal-mes td { background: var(--bg-card2); font-weight: 600; letter-spacing: .04em; color: var(--green); font-size: 12px; }
+  .cal-on { font-size: 10px; background: rgba(14,165,233,.16); color: var(--accent); border-radius: 4px; padding: 1px 5px; margin-left: 6px; }
   /* Mercado > Mapa */
   .mp-caja { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
   .mp-leyenda { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; font-size: 11px; color: var(--muted); }
@@ -570,6 +592,7 @@
       <button class="navbtn sub" data-view="dashboardCliente"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v9h9"/></svg>Cartera</button>
       <button class="navbtn sub" data-view="posiciones"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Posiciones</button>
       <button class="navbtn sub" data-view="rendimiento"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg>Rendimiento</button>
+      <button class="navbtn sub" data-view="calendario" data-no-alyc="1"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Calendario</button>
       <button class="navbtn" data-view="cauciones"><svg viewBox="0 0 24 24"><path d="M3 10l9-6 9 6M5 10v8M10 10v8M14 10v8M19 10v8M3 20h18"/></svg>Cauciones</button>
       <button class="navbtn" data-view="carry"><svg viewBox="0 0 24 24"><path d="M7 4L3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg>Carry Trade</button>
       <div class="navsep"></div>
@@ -614,6 +637,7 @@
       <div class="view" id="view-dashboardCliente"></div>
       <div class="view" id="view-posiciones"></div>
       <div class="view" id="view-rendimiento"></div>
+      <div class="view" id="view-calendario"></div>
       <div class="view" id="view-cauciones"></div>
       <div class="view" id="view-carry"></div>
       <div class="view" id="view-mercado"></div>
@@ -624,7 +648,10 @@
   </div>
 </div>
 
-<script src="vendor/xlsx.full.min.js"></script>
+<script src="vendor/xlsx-js-style.min.js"></script>
+<script src="vendor/jspdf.umd.min.js"></script>
+<script src="vendor/jspdf.plugin.autotable.min.js"></script>
+<script src="logo-eq.js"></script>
 <script src="data.js"></script>
 <script src="app.js"></script>
 <script src="alyc.js"></script>
@@ -635,5 +662,6 @@
 <script src="mapa-ui.js"></script>
 <script src="fondos-ui.js"></script>
 <script src="cliente.js"></script>
+<script src="calendario-ui.js"></script>
 </body>
 </html>
