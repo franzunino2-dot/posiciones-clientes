@@ -129,6 +129,7 @@ const historial = require('./historial').crearHistorial({ galloPost, listarComit
 // Posición en vivo: al abrir una cuenta se le pide a Gallo su portafolio en el momento y se usa por encima
 // de la última bajada del crawler (que refresca cada cuenta cada ~45 minutos).
 const portafolioFresco = {}; // código -> { activos, resumen, ts }
+const resultados = require('./pl').crearPL({ historial, leerPortafolios: () => leerPortafolios() });
 function leerPortafolios() {
   let base = {};
   try { base = JSON.parse(fs.readFileSync(PORTAFOLIO_FILE, 'utf8')); } catch (e) { /* sin archivo */ }
@@ -525,6 +526,17 @@ app.post('/api/cuenta/:id/actualizar', requireAuth, async (req, res) => {
       ...(pf.status === 'rejected' ? { errorPortafolio: String(pf.reason && pf.reason.message || pf.reason).slice(0, 160) } : {}),
       ...(hs.status === 'rejected' ? { errorHistorial: String(hs.reason && hs.reason.message || hs.reason).slice(0, 160) } : {}),
     });
+  } catch (e) { res.status(502).json({ ok: false, error: String(e.message || e).slice(0, 200) }); }
+});
+
+// Resultado de la cuenta en un período (pesos y dólares). desde y hasta en AAAA-MM-DD, ambos inclusive.
+app.get('/api/cuenta/:id/resultado', requireAuth, async (req, res) => {
+  try {
+    const id = String(req.params.id).replace(/[^0-9]/g, '');
+    const fecha = v => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : null);
+    const visibles = await comitentesVisibles(req.sesion);
+    if (!visibles.some(c => c.id === id)) return res.status(403).json({ ok: false, error: 'Esa cuenta no es de tu cartera' });
+    res.json(await resultados.calcular(id, fecha(req.query.desde), fecha(req.query.hasta)));
   } catch (e) { res.status(502).json({ ok: false, error: String(e.message || e).slice(0, 200) }); }
 });
 

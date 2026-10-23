@@ -255,6 +255,7 @@ function renderCliente() {
     </header>
     <main class="cv-main">${cuerpo}</main>
     <footer class="cv-foot">Equanima Securities · ALyC, CNV matrícula N° 191. ${cli.actualizado ? " Posición al " + new Date(cli.actualizado).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short", hour12: false }) + "." : ""} Información de solo lectura, tomada de tu cuenta; los valores son indicativos y pueden diferir de las liquidaciones.${PAGOS_ESTADO === "error" ? " No se pudo cargar el cronograma de pagos." : ""}</footer>`;
+  if (clienteVista.tab === "inicio") pintarPanelPL(document.getElementById("plHost"), clienteVista.id, "claro");
 }
 
 function cvTarjeta(titulo, cuerpo, accion) {
@@ -362,6 +363,7 @@ function cvInicio(cli) {
       </div>
     </section>
     ${cvResultados(cli)}
+    <div id="plHost"></div>
     <div class="cv-grid cv-grid3">
       ${cvTarjeta("Principales tenencias", tenencias || `<p class="cv-vacio">Sin posiciones.</p>`, `<button class="cv-link" onclick="cvTab('portafolio')">Ver todo →</button>`)}
       ${cvTarjeta("Movimientos del día", cuerpoMov)}

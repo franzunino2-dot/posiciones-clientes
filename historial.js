@@ -228,6 +228,7 @@ function crearHistorial({ galloPost, listarComitentes }) {
     actualizar,
     refrescarTodas,
     gananciasDe: id => indice[String(id)] || null,
+    ids: () => Object.keys(indice),
     // Los movimientos se arman al pedirlos desde lo guardado: así un cambio de clasificación no obliga a volver a bajar todo.
     movimientosDe: id => { try { return aMovimientos(JSON.parse(fs.readFileSync(archivo(id), 'utf8'))); } catch (e) { return null; } },
     crudoDe: id => { try { return JSON.parse(fs.readFileSync(archivo(id), 'utf8')); } catch (e) { return null; } },
@@ -240,4 +241,4 @@ function crearHistorial({ galloPost, listarComitentes }) {
   };
 }
 
-module.exports = { crearHistorial };
+module.exports = { crearHistorial, tipoDe, OPCIONES, FUTUROS };

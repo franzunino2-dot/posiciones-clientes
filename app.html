@@ -60,6 +60,28 @@
   th.ord { cursor: pointer; user-select: none; }
   th.ord:hover { color: var(--accent); }
   .resultado-busq { border-color: var(--accent); }
+  /* Resultado del período */
+  .pl-cab { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+  .pl-mon { display: flex; gap: 4px; }
+  #plPanel .pl-mon button, #plPanel .pl-presets button { padding: 6px 12px; border-radius: 999px; font-size: 13px; }
+  #plPanel .pl-mon button.on, #plPanel .pl-presets button.on { background: var(--accent); color: #04121c; border-color: var(--accent); font-weight: 600; }
+  .pl-presets { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 14px; }
+  .pl-fechas { margin-left: auto; font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .pl-fechas input[type=date] { padding: 4px 8px; font-size: 13px; }
+  .pl-grande { display: flex; gap: 40px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 14px; }
+  .pl-valor { font-family: var(--serif); font-size: 44px; line-height: 1.1; letter-spacing: -.01em; }
+  .pl-etq { font-size: 12px; color: var(--muted); display: block; }
+  .pl-sub { font-size: 15px; font-weight: 600; }
+  .pl-chicos { display: flex; gap: 26px; flex-wrap: wrap; }
+  .pl-chicos b { display: block; font-size: 16px; margin-top: 2px; font-weight: 600; }
+  .pl-fila { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid rgba(128,128,128,.2); font-size: 14px; }
+  .pl-fila:last-child { border-bottom: none; }
+  .pl-nota { font-size: 12px; color: var(--muted); margin: 10px 0 0; line-height: 1.5; }
+  .pl-cargando { opacity: .45; }
+  #clienteApp #plPanel .pl-mon button.on, #clienteApp #plPanel .pl-presets button.on { background: #e0f2fe; color: #0369a1; border: none; }
+  #clienteApp #plPanel .pl-mon button, #clienteApp #plPanel .pl-presets button { background: #eef2f7; color: #5b6b82; }
+  #clienteApp #plPanel input[type=date] { background: #fff; color: #0f1b2d; border: 1px solid #d5dce8; }
+  #clienteApp .pl-etq, #clienteApp .pl-nota, #clienteApp .pl-fechas { color: #6b7a90; }
   .perfil-salir { align-self: flex-start; background: none; border: none; color: var(--muted); padding: 4px 0; }
 
   .sidebar {
@@ -471,7 +493,6 @@
       <button class="navbtn" data-view="cauciones"><svg viewBox="0 0 24 24"><path d="M3 10l9-6 9 6M5 10v8M10 10v8M14 10v8M19 10v8M3 20h18"/></svg>Cauciones</button>
       <button class="navbtn" data-view="carry"><svg viewBox="0 0 24 24"><path d="M7 4L3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg>Carry Trade</button>
       <div class="navsep"></div>
-      <button class="navbtn" data-view="cargar" data-admin-only="1"><svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg>Cargar archivo</button>
       <button class="navbtn" id="btnVerCliente" data-admin-only="1"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"/></svg>Ver como cliente</button>
       <button class="navbtn" data-view="mercado"><svg viewBox="0 0 24 24"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg>Mercado</button>
       <div class="navsep" data-admin-only="1"></div>
@@ -511,7 +532,6 @@
       <div class="view" id="view-rendimiento"></div>
       <div class="view" id="view-cauciones"></div>
       <div class="view" id="view-carry"></div>
-      <div class="view" id="view-cargar"></div>
       <div class="view" id="view-mercado"></div>
       <div class="view" id="view-comitentes"></div>
     </main>
@@ -520,11 +540,11 @@
 
 <script src="vendor/xlsx.full.min.js"></script>
 <script src="data.js"></script>
-<script src="importar.js"></script>
 <script src="app.js"></script>
 <script src="alyc.js"></script>
 <script src="perfil.js"></script>
 <script src="manager.js"></script>
+<script src="resultado.js"></script>
 <script src="cliente.js"></script>
 </body>
 </html>

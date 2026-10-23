@@ -150,7 +150,6 @@ function render() {
   else if (vistaActual === "carry") renderCarryTrade(clientesVisibles);
   else if (vistaActual === "comitentes") renderVistaGeneral(clientesVisibles);
   else if (vistaActual === "mercado") renderMercado();
-  else if (vistaActual === "cargar") renderCargar();
   renderTicker();
 }
 
@@ -287,6 +286,7 @@ function renderDashboardCliente(cli) {
       </div>
     </div>
   `;
+  pintarPanelPL(el, cli.id, "");
 }
 
 // ---------- Posiciones (vista por comitente) ----------
