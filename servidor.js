@@ -171,7 +171,9 @@ function armarCliente(cod, cli, mgrMap, portafolio) {
   // distintas), el factor de unidad se DERIVA del propio importe que manda Gallo.
   const conFactor = a => {
     const bruto = a.cantidad * (a.precio || 0);
-    const factorUnidad = bruto ? (Math.abs(a.importe / bruto - 0.01) < 0.001 ? 0.01 : 1) : 1;
+    // 0,01 = bonos/ONs/letras (precio cada 100 VN); 0,001 = fondos comunes (precio cada 1.000 cuotapartes); 1 = el resto.
+    const razon = bruto ? a.importe / bruto : 1;
+    const factorUnidad = Math.abs(razon - 0.01) < 0.001 ? 0.01 : Math.abs(razon - 0.001) < 0.0001 ? 0.001 : 1;
     return { t: a.ticker, n: a.especie, c: a.cantidad, p: a.precio, co: a.costo, pa: a.precio, factorUnidad };
   };
   const activos = p.activos || [];

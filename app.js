@@ -141,6 +141,7 @@ function render() {
   const cli = clientesVisibles.find(c => c.id === clienteActualId);
 
   if (vistaActual === "alyc") renderAlyc(clientesVisibles);
+  else if (vistaActual === "inicio") renderInicioManager(clientesVisibles);
   else if (vistaActual === "general") renderDashboard(clientesVisibles);
   else if (vistaActual === "dashboardCliente") renderDashboardCliente(cli);
   else if (vistaActual === "posiciones") renderPosiciones(cli);
@@ -1092,6 +1093,7 @@ function init() {
     if (b.dataset.adminOnly === "1" && !esAdmin()) return;
     b.addEventListener("click", () => irAVista(b.dataset.view));
   });
+  if (sesion.rol === "alyc") document.querySelectorAll("[data-no-alyc]").forEach(b => b.style.display = "none");
   if (sesion.rol !== "alyc") document.querySelectorAll("[data-alyc-only]").forEach(b => b.style.display = "none");
   if (!esAdmin()) document.querySelectorAll("[data-admin-only]").forEach(b => b.style.display = "none");
   cargarDolares();
@@ -1134,7 +1136,7 @@ function init() {
   }
   document.getElementById("btnLogout").addEventListener("click", logout);
   document.getElementById("fecha").textContent = new Date().toLocaleDateString("es-AR", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-  irAVista(sesion.rol === "alyc" ? "alyc" : esAdmin() ? "general" : "dashboardCliente");
+  irAVista(sesion.rol === "alyc" ? "alyc" : esAdmin() ? "inicio" : "dashboardCliente");
 }
 
 document.addEventListener("DOMContentLoaded", () => {
