@@ -540,6 +540,37 @@ app.get('/api/cuenta/:id/resultado', requireAuth, async (req, res) => {
   } catch (e) { res.status(502).json({ ok: false, error: String(e.message || e).slice(0, 200) }); }
 });
 
+// Mercado en vivo (BYMA data + dólar, cripto y acciones de EE.UU.). Los nombres que BYMA no informa
+// se completan con el que Gallo usa para cada especie en las carteras.
+const byma = require('./byma');
+let nombresGallo = { ts: 0, v: {} };
+function nombresDeGallo() {
+  if (Date.now() - nombresGallo.ts < 30 * 60000) return nombresGallo.v;
+  const v = {};
+  Object.values(leerPortafolios()).forEach(p => (p.activos || []).forEach(a => { if (a.ticker && a.especie && !v[a.ticker]) v[a.ticker] = a.especie; }));
+  nombresGallo = { ts: Date.now(), v };
+  return v;
+}
+app.get('/api/mercado', requireAuth, async (req, res) => {
+  try { res.json(await byma.snapshot(nombresDeGallo())); }
+  catch (e) { res.status(502).json({ ok: false, error: String(e.message || e).slice(0, 200) }); }
+});
+app.get('/api/mercado/graficos', requireAuth, async (req, res) => {
+  try { res.json({ ok: true, series: await byma.minigraficos(String(req.query.t || '').split(',').filter(Boolean)) }); }
+  catch (e) { res.status(502).json({ ok: false, error: String(e.message || e).slice(0, 200) }); }
+});
+
+app.get('/api/mercado/buscar', requireAuth, async (req, res) => {
+  try { res.json({ ok: true, resultados: await byma.buscar(req.query.q, nombresDeGallo()) }); }
+  catch (e) { res.status(502).json({ ok: false, error: String(e.message || e).slice(0, 200) }); }
+});
+app.get('/api/mercado/ficha', requireAuth, async (req, res) => {
+  try {
+    const f = await byma.ficha(String(req.query.t || '').trim(), String(req.query.src || ''), nombresDeGallo());
+    res.json(f || { ok: false, error: 'No encontré esa especie' });
+  } catch (e) { res.status(502).json({ ok: false, error: String(e.message || e).slice(0, 200) }); }
+});
+
 // Estado y refresco del historial automático. Solo la ALyC puede lanzar la bajada de todas las cuentas.
 app.get('/api/historial/estado', requireAuth, (req, res) => {
   if (req.sesion.rol !== 'alyc' && req.sesion.rol !== 'admin') return res.status(403).json({ ok: false, error: 'Solo la ALyC' });

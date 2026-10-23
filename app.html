@@ -82,6 +82,76 @@
   #clienteApp #plPanel .pl-mon button, #clienteApp #plPanel .pl-presets button { background: #eef2f7; color: #5b6b82; }
   #clienteApp #plPanel input[type=date] { background: #fff; color: #0f1b2d; border: 1px solid #d5dce8; }
   #clienteApp .pl-etq, #clienteApp .pl-nota, #clienteApp .pl-fechas { color: #6b7a90; }
+  /* Mercado > Contado */
+  .mk-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+  .mk-sup { font-size: 11px; letter-spacing: .1em; color: var(--green); }
+  .mk-cab h1 { margin: 2px 0 4px; font-size: 32px; font-family: var(--serif); font-weight: 400; }
+  .mk-sub { color: var(--muted); font-size: 13px; }
+  .mk-mon { display: flex; background: var(--bg-card); border: 1px solid var(--border); border-radius: 999px; padding: 3px; }
+  .mk-mon button { border: none; background: none; border-radius: 999px; padding: 6px 14px; color: var(--muted); }
+  .mk-mon button.on { background: var(--green); color: #04121c; font-weight: 600; }
+  .mk-buscar { position: relative; margin-bottom: 16px; }
+  input#mkQ { width: 100%; padding: 16px 44px; font-size: 15px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; }
+  input#mkQ:focus { outline: none; border-color: var(--green); }
+  .mk-lupa { position: absolute; left: 16px; top: 12px; color: var(--muted); font-size: 20px; }
+  .mk-x { background: none; border: none; color: var(--muted); font-size: 15px; }
+  .mk-buscar .mk-x { position: absolute; right: 14px; top: 14px; }
+  .mk-res { position: absolute; left: 0; right: 0; top: 100%; z-index: 20; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; margin-top: 6px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,.45); }
+  .mk-res:empty { display: none; }
+  .mk-r { display: flex; align-items: center; gap: 12px; padding: 11px 16px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,.05); }
+  .mk-r:hover { background: var(--bg-card2); }
+  .mk-r.vacio { color: var(--muted); cursor: default; }
+  .mk-r .mk-mercado { margin-left: auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .mk-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+  @media (max-width: 1100px) { .mk-grid { grid-template-columns: 1fr; } }
+  .mk-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; margin-bottom: 16px; }
+  .mk-card h3 { font-size: 12px; letter-spacing: .08em; color: var(--muted); margin: 0 0 8px; font-weight: 600; }
+  .mk-fila { display: flex; align-items: center; gap: 12px; padding: 10px 4px; border-bottom: 1px solid rgba(255,255,255,.05); cursor: pointer; }
+  .mk-fila:last-child { border-bottom: none; }
+  .mk-fila:hover { background: var(--bg-card2); }
+  .mk-fila.sin { cursor: default; }
+  .mk-ico { width: 22px; height: 22px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0; }
+  .mk-t { color: var(--green); font-weight: 700; font-size: 13px; width: 74px; flex-shrink: 0; }
+  .mk-n { color: var(--text); font-size: 13px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mk-n i { color: var(--muted); font-style: normal; }
+  .mk-p { font-weight: 600; font-size: 14px; text-align: right; min-width: 96px; }
+  .mk-chip { font-size: 12px; border-radius: 999px; padding: 3px 9px; min-width: 66px; text-align: center; }
+  .mk-chip.pos { background: rgba(45,212,160,.14); color: var(--green); }
+  .mk-chip.neg { background: rgba(255,107,107,.14); color: var(--red); }
+  .mk-spark { width: 80px; height: 26px; display: inline-block; flex-shrink: 0; }
+  .mk-spark svg { width: 100%; height: 100%; display: block; }
+  .mk-star { background: none; border: none; color: var(--muted); font-size: 16px; width: 26px; padding: 0; }
+  .mk-star.on { color: #facc15; }
+  .mk-fila.corta .mk-t { flex: 1; width: auto; }
+  .mk-movs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .mk-mov { border: 1px solid var(--border); border-radius: 10px; padding: 10px; cursor: pointer; display: flex; flex-direction: column; gap: 5px; align-items: center; background: var(--bg-card2); }
+  .mk-mov.pos { border-color: rgba(45,212,160,.35); }
+  .mk-mov.neg { border-color: rgba(255,107,107,.35); }
+  .mk-mov .mk-spark { width: 100%; }
+  .mk-dolar { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .mk-dtile { background: var(--bg-card2); border-radius: 8px; padding: 8px; display: flex; flex-direction: column; gap: 2px; }
+  .mk-dtile span { font-size: 10px; color: var(--green); letter-spacing: .06em; }
+  .mk-dtile small { color: var(--muted); font-size: 11px; }
+  .mk-ficha { position: relative; border-color: var(--green); }
+  .mk-fch-cab { display: flex; justify-content: space-between; gap: 12px; }
+  .mk-fch-nom { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
+  .mk-fch-precio { font-size: 36px; font-weight: 700; }
+  .mk-fch-var { font-size: 14px; font-weight: 600; margin-top: 2px; }
+  .mk-fch-var.pos { color: var(--green); } .mk-fch-var.neg { color: var(--red); }
+  .mk-fch-var span { color: var(--muted); font-weight: 400; }
+  .mk-fch-acc { display: flex; gap: 6px; align-items: flex-start; }
+  .mk-chart-wrap { position: relative; margin-top: 10px; }
+  .mk-chart { width: 100%; height: 260px; display: block; }
+  .mk-eje { fill: var(--muted); font-size: 11px; }
+  .mk-tip { position: absolute; top: 0; transform: translateX(-50%); background: var(--bg-card2); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 12px; display: none; pointer-events: none; white-space: nowrap; }
+  .mk-rangos { display: flex; gap: 6px; margin: 6px 0 12px; }
+  .mk-rangos button { flex: 1; background: none; border: none; color: var(--muted); padding: 9px 0; border-radius: 8px; }
+  .mk-rangos button.on { background: var(--bg); color: var(--text); font-weight: 700; }
+  .mk-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; border-top: 1px solid var(--border); padding-top: 12px; }
+  .mk-stats span { display: block; color: var(--muted); font-size: 12px; }
+  .mk-stats b { font-size: 15px; }
+  .mk-vacio { color: var(--muted); font-size: 13px; margin: 6px 0; }
+  .mk-nota { color: var(--muted); font-size: 11px; margin: 8px 0 0; }
   .perfil-salir { align-self: flex-start; background: none; border: none; color: var(--muted); padding: 4px 0; }
 
   .sidebar {
@@ -494,7 +564,11 @@
       <button class="navbtn" data-view="carry"><svg viewBox="0 0 24 24"><path d="M7 4L3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg>Carry Trade</button>
       <div class="navsep"></div>
       <button class="navbtn" id="btnVerCliente" data-admin-only="1"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"/></svg>Ver como cliente</button>
-      <button class="navbtn" data-view="mercado"><svg viewBox="0 0 24 24"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg>Mercado</button>
+      <div class="navgroup open"><svg viewBox="0 0 24 24"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg>Mercado</div>
+      <button class="navbtn sub" data-view="mercado"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5c0-1 1-1.7 2.5-1.7s2.5.7 2.5 1.7-1 1.5-2.5 1.8-2.5.8-2.5 1.8 1 1.7 2.5 1.7 2.5-.7 2.5-1.7"/></svg>Contado</button>
+      <button class="navbtn sub" disabled style="opacity:.4;cursor:default" title="Próximamente"><svg viewBox="0 0 24 24"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/></svg>Mapa</button>
+      <button class="navbtn sub" disabled style="opacity:.4;cursor:default" title="Próximamente"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg>Fondos</button>
+      <button class="navbtn sub" disabled style="opacity:.4;cursor:default" title="Próximamente"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8"/></svg>Noticias</button>
       <div class="navsep" data-admin-only="1"></div>
       <button class="navbtn" data-view="general" data-admin-only="1"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>General</button>
       <button class="navbtn" data-view="comitentes" data-admin-only="1"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-3.5 3-6 7-6s7 2.5 7 6M17 5a3.5 3.5 0 010 7M22 20c0-2.5-1.5-4.5-4-5.3"/></svg>Comitentes</button>
@@ -545,6 +619,7 @@
 <script src="perfil.js"></script>
 <script src="manager.js"></script>
 <script src="resultado.js"></script>
+<script src="mercado-ui.js"></script>
 <script src="cliente.js"></script>
 </body>
 </html>

@@ -46,15 +46,27 @@ function mepEn(serie, fecha) {
 const GRUPOS = ['stocks', 'cedears', 'bonds'];
 const enCurso = {};
 // Devuelve { fechas: [...ordenadas], cierre: { fecha: precio } } o null si data912 no tiene la especie.
-async function cierresDe(ticker) {
+async function cierresDe(ticker, origen = 'ar') {
   const t = String(ticker || '').trim();
   if (!t || /[^A-Za-z0-9.$]/.test(t)) return null;
-  const archivo = 'h_' + t.replace(/[^A-Za-z0-9]/g, '_') + '.json';
+  const archivo = (origen === 'us' ? 'hu_' : 'h_') + t.replace(/[^A-Za-z0-9]/g, '_') + '.json';
   const g = leer(archivo);
   if (g && Date.now() - g.ts < (g.fechas ? VIGENCIA_MS : NEGATIVO_MS)) return g.fechas ? g : null;
-  if (enCurso[t]) return enCurso[t];
-  enCurso[t] = (async () => {
+  const clave = origen + ':' + t;
+  if (enCurso[clave]) return enCurso[clave];
+  enCurso[clave] = (async () => {
     try {
+      if (origen === 'us') {
+        try {
+          const r = await axios.get('https://data912.com/historical/usa_stocks/' + encodeURIComponent(t), { timeout: 15000, headers: HEADERS });
+          const cierre = {};
+          (r.data.dates || []).forEach((f, i) => { const c = r.data.prices[i]; if (c > 0) cierre[f] = c; });
+          const fechas = Object.keys(cierre).sort();
+          if (fechas.length) { const out = { ts: Date.now(), grupo: 'usa_stocks', fechas, cierre }; guardar(archivo, out); return out; }
+        } catch (e) { /* sin serie */ }
+        guardar(archivo, { ts: Date.now(), fechas: null });
+        return null;
+      }
       for (const grupo of GRUPOS) {
         try {
           const r = await axios.get(`https://data912.com/historical/${grupo}/${encodeURIComponent(t)}`, { timeout: 15000, headers: HEADERS });
@@ -70,9 +82,9 @@ async function cierresDe(ticker) {
       }
       guardar(archivo, { ts: Date.now(), fechas: null });
       return null;
-    } finally { delete enCurso[t]; }
+    } finally { delete enCurso[clave]; }
   })();
-  return enCurso[t];
+  return enCurso[clave];
 }
 // Último cierre de la serie con fecha <= la pedida (con la fecha a la que corresponde).
 function cierreEn(serie, fecha) {

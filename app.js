@@ -149,7 +149,7 @@ function render() {
   else if (vistaActual === "cauciones") renderCaucionesGlobal(clientesVisibles);
   else if (vistaActual === "carry") renderCarryTrade(clientesVisibles);
   else if (vistaActual === "comitentes") renderVistaGeneral(clientesVisibles);
-  else if (vistaActual === "mercado") renderMercado();
+  else if (vistaActual === "mercado") renderMercadoContado();
   renderTicker();
 }
 
@@ -884,7 +884,7 @@ async function cargarDolares() {
     MERCADO.ts = new Date();
   } catch (e) { /* sin internet: el ticker muestra solo las especies */ }
   renderTicker();
-  if (vistaActual === "mercado") render();
+  if (vistaActual === "mercado" && typeof MK !== "undefined" && !MK.data) render();
   if (typeof clienteVista !== "undefined" && clienteVista.id) renderCliente();
 }
 
