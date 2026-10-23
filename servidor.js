@@ -101,6 +101,10 @@ const num = v => { const n2 = parseFloat(String(v ?? '').replace(',', '.')); ret
 // Cache corto: esto define quién puede entrar y qué ve, así que se refresca seguido.
 
 let identidadCache = { clientes: [], managers: [], exp: 0 };
+// Última lista de managers que Gallo contestó bien: si al arrancar no la da (pasa cuando el crawler de rentafija
+// inicia sesión justo en el medio), nadie con mail de manager podría entrar hasta el próximo reinicio.
+const MANAGERS_FILE = path.join(__dirname, 'mercado', 'managers.json');
+try { identidadCache.managers = JSON.parse(fs.readFileSync(MANAGERS_FILE, 'utf8')); } catch (e) { /* primera vez */ }
 async function getIdentidad() {
   if (Date.now() < identidadCache.exp && identidadCache.clientes.length) return identidadCache;
   // Gallo es intermitente: una respuesta vacía o con error NO se cachea (antes quedaba "0
@@ -108,9 +112,11 @@ async function getIdentidad() {
   for (let intento = 0; intento < 3; intento++) {
     const [cliR, mgrR] = await Promise.allSettled([galloPost('GetClientes', {}), galloPost('Manager', {})]);
     const clientes = cliR.status === 'fulfilled' ? (galloResultado(cliR.value).Clientes || []) : [];
+    const mgrs = mgrR.status === 'fulfilled' ? (galloResultado(mgrR.value).Manager || []) : [];
+    if (clientes.length && !mgrs.length && intento < 2) { await new Promise(r => setTimeout(r, 1500)); continue; }
     if (clientes.length) {
-      const managers = mgrR.status === 'fulfilled' ? (galloResultado(mgrR.value).Manager || []) : identidadCache.managers;
-      identidadCache = { clientes, managers, exp: Date.now() + 10 * 60000 };
+      if (mgrs.length) { try { fs.mkdirSync(path.dirname(MANAGERS_FILE), { recursive: true }); fs.writeFileSync(MANAGERS_FILE, JSON.stringify(mgrs)); } catch (e) { /* ignorar */ } }
+      identidadCache = { clientes, managers: mgrs.length ? mgrs : identidadCache.managers, exp: Date.now() + (mgrs.length ? 10 : 1) * 60000 };
       return identidadCache;
     }
     await new Promise(r => setTimeout(r, 1500));
