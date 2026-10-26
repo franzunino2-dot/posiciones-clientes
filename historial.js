@@ -126,6 +126,43 @@ function crearHistorial({ galloPost, listarComitentes }) {
     throw ultimo;
   }
 
+  // Operaciones de hoy. La cuenta corriente de Gallo se arma al procesar el cierre del día, así que una compra o venta
+  // de hoy no figura ahí hasta mañana (y es lo que se quiere ver ya). OperacionesDia la trae con cantidad, precio e
+  // importe neto, agrupada por título y operación; se suma al historial como "a liquidar" mientras la cuenta corriente
+  // no la tenga.
+  const hoyOps = {}; // id -> { f, ts, grupos }
+  const isoHoy = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+  async function actualizarHoy(id) {
+    const r = await conReintentos(() => galloPost('OperacionesDia', { comi: String(id) }));
+    if (!r || r.IsOK === false) throw new Error('OperacionesDia: ' + String(r && r.Error || 'sin respuesta').slice(0, 120));
+    const grupos = {};
+    ((r.Resultado || {}).Operaciones || []).forEach(g => (Array.isArray(g.Detalle) ? g.Detalle : []).forEach(d => {
+      const c = String(d.Operacion || '').trim(), tipo = POR_CODIGO[c];
+      if ((tipo !== 'Compra' && tipo !== 'Venta') || FUTUROS.has(c) || OPCIONES.has(c)) return; // solo compras y ventas de títulos
+      const usd = String(d.Moneda || '').trim() !== '$', q = num(d.Cantidad), i = usd ? num(d['NetoenMoneda%7D']) : num(d.NetoenPesos), t = String(d.Ticker || '').trim();
+      if (!t || !q || i == null) return;
+      const e = grupos[t + '|' + c + '|' + (usd ? 'U' : 'P')] || (grupos[t + '|' + c + '|' + (usd ? 'U' : 'P')] = { t, c, usd, q: 0, i: 0, bruto: 0 });
+      e.q += q; e.i += i; e.bruto += Math.abs(num(d.BrutoBoleto) || 0);
+    }));
+    hoyOps[String(id)] = { f: isoHoy(), ts: Date.now(), grupos: Object.values(grupos) };
+    return hoyOps[String(id)].grupos.length;
+  }
+  // Historial con lo de hoy que la cuenta corriente todavía no trae (se descuenta lo que ya figure para no duplicar).
+  function conHoy(id, h) {
+    const t = hoyOps[String(id)];
+    if (!h || !t || t.f !== isoHoy() || !t.grupos.length) return h;
+    const mañana = new Date(Date.now() + 86400000), fl = `${mañana.getFullYear()}-${pad(mañana.getMonth() + 1)}-${pad(mañana.getDate())}`;
+    const nuevas = { pesos: [], usd: [] };
+    t.grupos.forEach((g, k) => {
+      const lista = g.usd ? h.usd : h.pesos, signo = Math.sign(g.q);
+      const yaEsta = lista.filter(x => x.f === t.f && x.t === g.t && x.q && Math.sign(x.q) === signo).reduce((a, x) => a + Math.abs(x.q), 0);
+      const resto = Math.abs(g.q) - yaEsta;
+      if (resto <= Math.abs(g.q) * 1e-6) return;
+      (g.usd ? nuevas.usd : nuevas.pesos).push({ f: t.f, fl, c: g.c, n: 900000000 + k, t: g.t, ce: '', e: g.t, q: signo * resto, p: g.bruto / Math.abs(g.q), i: g.i * resto / Math.abs(g.q), s: null, r: 'a liquidar', m: g.usd ? 'USD' : 'ARS', pendiente: true });
+    });
+    return nuevas.pesos.length || nuevas.usd.length ? { ...h, pesos: [...h.pesos, ...nuevas.pesos], usd: [...h.usd, ...nuevas.usd] } : h;
+  }
+
   async function bajar(id) {
     const params = { comi: String(id), fecd: DESDE, fech: hoyGallo() };
     const rp = await conReintentos(() => galloPost('CtaCte', params));
@@ -187,7 +224,8 @@ function crearHistorial({ galloPost, listarComitentes }) {
 
   async function actualizar(id) {
     const h = await bajar(id);
-    const g = aGanancias(h);
+    try { await actualizarHoy(id); } catch (e) { /* sin operaciones del día: queda lo de la cuenta corriente */ }
+    const g = aGanancias(conHoy(id, h));
     fs.writeFileSync(archivo(id), JSON.stringify(h));
     indice[String(id)] = { v: VERSION, fmt: FORMATO, actualizado: h.actualizado, ganancias: g.ganancias, operaciones: g.operaciones };
     if (++sucio >= 25) guardarIndice();
@@ -231,7 +269,8 @@ function crearHistorial({ galloPost, listarComitentes }) {
     gananciasDe: id => indice[String(id)] || null,
     ids: () => Object.keys(indice),
     // Los movimientos se arman al pedirlos desde lo guardado: así un cambio de clasificación no obliga a volver a bajar todo.
-    movimientosDe: id => { try { return aMovimientos(JSON.parse(fs.readFileSync(archivo(id), 'utf8'))); } catch (e) { return null; } },
+    movimientosDe: id => { try { return aMovimientos(conHoy(id, JSON.parse(fs.readFileSync(archivo(id), 'utf8')))); } catch (e) { return null; } },
+    actualizarHoy,
     crudoDe: id => { try { return JSON.parse(fs.readFileSync(archivo(id), 'utf8')); } catch (e) { return null; } },
     // Arranque: espera un poco a que el servidor esté listo, baja lo que falta y revisa cada 3 horas.
     iniciar() {
