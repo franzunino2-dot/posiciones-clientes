@@ -51,11 +51,24 @@ function fmtMon(cli, ars, opts = {}) {
 
 // ---------- Posiciones y pagos ----------
 
+// Efectivo en dólares por cuenta de Gallo: USD MEP y USD cable (cada una con su tipo de cambio).
+// `ars` es lo que informa Gallo en pesos (exacto); sin el desglose (datos de ejemplo) todo se toma como MEP.
+function saldosDolares(cli) {
+  const d = cli.dolares || {}, tc = cli.tc || 0;
+  if (d.mep || d.cable) {
+    const m = d.mep || {}, c = d.cable || {};
+    return { mep: m.efectivoUSD || 0, cable: c.efectivoUSD || 0, mepARS: m.efectivoARS || 0, cableARS: c.efectivoARS || 0,
+      ars: (m.efectivoARS || 0) + (c.efectivoARS || 0), tieneCable: !!(c.efectivoUSD || c.valorARS) };
+  }
+  const usd = d.cuentaCorrienteUSD || 0;
+  return { mep: usd, cable: 0, mepARS: usd * tc, cableARS: 0, ars: usd * tc, tieneCable: false };
+}
+
 function posicionesCliente(cli) {
   const lista = [];
   [["ARS", cli.detallePesos], ["USD", cli.detalleDolares]].forEach(([mon, arr]) => (arr || []).forEach(p => {
     const c = calcPosicion(p);
-    const fx = mon === "USD" ? (cli.tc || 0) : 1;
+    const fx = mon === "USD" ? (p.tcPos || cli.tc || 0) : 1;
     lista.push({ ...p, mon, importe: c.importe, varPct: c.varPct, ars: c.importe * fx });
   }));
   return lista.filter(p => Math.abs(p.ars) > 0.5).sort((a, b) => b.ars - a.ars);
@@ -269,7 +282,7 @@ function resultadosCliente(cli) {
   const tc = cli.tc || 0;
   let noReal = 0, costoAbierto = 0;
   posicionesCliente(cli).forEach(p => {
-    const fx = p.mon === "USD" ? tc : 1;
+    const fx = p.mon === "USD" ? (p.tcPos || tc) : 1;
     const factor = p.c * (p.factorUnidad !== undefined ? p.factorUnidad : (BONOS.includes(p.t) ? 0.01 : 1));
     noReal += (p.importe - factor * p.co) * fx;
     costoAbierto += factor * p.co * fx;
@@ -309,7 +322,7 @@ function cvResultados(cli) {
 function cvInicio(cli) {
   const pos = posicionesCliente(cli);
   const tc = cli.tc || 0;
-  const saldoARS = (cli.pesos.cuentaCorriente || 0) + (cli.dolares.cuentaCorrienteUSD || 0) * tc;
+  const saldoARS = (cli.pesos.cuentaCorriente || 0) + saldosDolares(cli).ars;
   const pagos = pagosCliente(cli);
   const proximos = pagos.slice(0, 4);
   const nombre = titulo(cli.nombre);
@@ -319,7 +332,7 @@ function cvInicio(cli) {
 
   // Cambio de hoy: precio actual contra el cierre anterior, en pesos.
   let difDia = 0;
-  pos.forEach(p => { difDia += calcPosicion(p).resultadoDia * (p.mon === "USD" ? tc : 1); });
+  pos.forEach(p => { difDia += calcPosicion(p).resultadoDia * (p.mon === "USD" ? (p.tcPos || tc) : 1); });
   const baseAnt = totalPos - difDia, pctDia = baseAnt ? difDia / baseAnt * 100 : 0;
   const signo = difDia > 0 ? "+" : "";
 
@@ -375,15 +388,16 @@ function cvInicio(cli) {
 function cvPortafolio(cli) {
   const tc = cli.tc || 0;
   const pos = posicionesCliente(cli).map(p => {
-    const c = calcPosicion(p), fx = p.mon === "USD" ? tc : 1;
+    const c = calcPosicion(p), fx = p.mon === "USD" ? (p.tcPos || tc) : 1;
     return { ...p, clase: claseActivo(p), valorARS: c.importe * fx, costoARS: (c.importe - c.resultados) * fx, pnlARS: c.resultados * fx };
   });
   const total = pos.reduce((a, p) => a + p.ars, 0);
   const costo = pos.reduce((a, p) => a + p.costoARS, 0), pnlNoReal = pos.reduce((a, p) => a + p.pnlARS, 0);
   const realizado = (cli.ganancias || []).reduce((a, g) => a + (g.ventaRescate - g.costo) * (g.moneda === "USD" ? tc : 1), 0);
   const pnlTotal = pnlNoReal + realizado, pnlPct = costo ? pnlNoReal / costo * 100 : 0;
-  const sPesos = cli.pesos.cuentaCorriente || 0, sUsd = cli.dolares.cuentaCorrienteUSD || 0;
-  const saldoTot = sPesos + sUsd * tc;
+  const sPesos = cli.pesos.cuentaCorriente || 0, sd = saldosDolares(cli);
+  const saldoTot = sPesos + sd.ars;
+  const usdTxt = v => (v < 0 ? "-" : "") + "USD " + fmtMoney(Math.abs(v), 2);
 
   const principales = pos.slice(0, 8), resto = pos.slice(8).reduce((a, p) => a + p.ars, 0);
   const trozos = principales.map((p, i) => ({ nombre: p.t, ars: p.ars, color: PALETA[i] }));
@@ -393,7 +407,7 @@ function cvPortafolio(cli) {
 
   const filas = pos.map(p => `
     <tr>
-      <td><b>${esc(p.t)}</b><span class="cv-sub">${esc(titulo(p.n))}</span></td>
+      <td><b>${esc(p.t)}</b>${p.mon === "USD" ? ` <span class="cv-pill claro">${p.cable ? "USD Cable" : "USD MEP"}</span>` : ""}<span class="cv-sub">${esc(titulo(p.n))}</span></td>
       <td><span class="cv-pill claro">Abierto</span></td>
       <td class="n">${p.mon === "USD" ? "USD " : "$ "}${fmtMoney(p.p, 2)}</td>
       <td>${esc(p.clase)}</td>
@@ -419,13 +433,13 @@ function cvPortafolio(cli) {
       <section class="cv-card cv-kpi">
         <span class="cv-etq">Saldo en cuenta</span>
         <div class="cv-kpi-n ${saldoTot < 0 ? "cv-rojo" : ""}">${fmtMon(cli, saldoTot)}</div>
-        <div class="cv-kpi-p"><div><span class="cv-sub">Pesos</span><span class="${sPesos < 0 ? "cv-rojo" : ""}">${fmtMon(cli, sPesos)}</span></div><div><span class="cv-sub">Dólares</span><span class="${sUsd < 0 ? "cv-rojo" : ""}">${sUsd < 0 ? "-" : ""}USD ${fmtMoney(Math.abs(sUsd), 2)}</span></div></div>
+        <div class="cv-kpi-p"><div><span class="cv-sub">Pesos</span><span class="${sPesos < 0 ? "cv-rojo" : ""}">${fmtMon(cli, sPesos)}</span></div><div><span class="cv-sub">USD MEP</span><span class="${sd.mep < 0 ? "cv-rojo" : ""}">${usdTxt(sd.mep)}</span></div>${sd.tieneCable ? `<div><span class="cv-sub">USD Cable</span><span class="${sd.cable < 0 ? "cv-rojo" : ""}">${usdTxt(sd.cable)}</span></div>` : ""}</div>
       </section>
     </div>
     ${cvTarjeta("Posiciones", `
       <div class="cv-tabla"><table>
         <thead><tr><th>Ticker</th><th>Estado</th><th class="n">Precio actual</th><th>Clase</th><th class="n">Cantidad</th><th class="n">Costo base</th><th class="n">Valor de mercado</th><th class="n">P&amp;L no realizado</th></tr></thead>
-        <tbody>${filas || `<tr><td colspan="8" class="cv-vacio">Sin posiciones.</td></tr>`}${filaSaldo("Saldo en pesos", sPesos)}${filaSaldo("Saldo en dólares", sUsd * tc)}</tbody>
+        <tbody>${filas || `<tr><td colspan="8" class="cv-vacio">Sin posiciones.</td></tr>`}${filaSaldo("Saldo en pesos", sPesos)}${filaSaldo(sd.tieneCable ? "Saldo en dólares MEP" : "Saldo en dólares", sd.mepARS)}${sd.tieneCable ? filaSaldo("Saldo en dólares cable", sd.cableARS) : ""}</tbody>
       </table></div>
       <p class="cv-nota">P&amp;L no realizado = precio actual contra el costo promedio. El precio de cada activo está en su moneda de cotización; los importes se muestran en la moneda elegida arriba.</p>`)}
     ${cvTarjeta("Composición", `

@@ -163,16 +163,35 @@ function parsePortafolio(r) {
 
 // ---------- Adaptador: forma de Gallo -> forma que espera app.js/data.js ----------
 
-function armarCliente(cod, cli, mgrMap, portafolio) {
+// Gallo lleva dos cuentas en dólares: "USD MEP" (títulos que liquidan acá) y "USD" a secas, que es el dólar cable
+// (liquida afuera, con su propio tipo de cambio). Se muestran por separado; cada título se pasa a dólares con el
+// tipo de cambio de SU cuenta, así el valor en pesos sigue coincidiendo con el importe que informa Gallo.
+function tcDolaresGlobal(portafolio) {
+  const g = { mep: 0, cable: 0 };
+  for (const p of Object.values(portafolio)) {
+    for (const d of (p.resumen?.Detalle || [])) {
+      if (!(num(d.TipoCambio) > 1) || !(d.Detalle || '').includes('Cuenta Corriente')) continue;
+      if (d.Moneda === 'USD MEP' && !g.mep) g.mep = num(d.TipoCambio);
+      if (d.Moneda === 'USD' && !g.cable) g.cable = num(d.TipoCambio);
+    }
+    if (g.mep && g.cable) break;
+  }
+  return g;
+}
+
+function armarCliente(cod, cli, mgrMap, portafolio, tcGlobal = {}) {
   const p = portafolio[cod] || { activos: [], resumen: {} };
   const detalle = p.resumen?.Detalle || [];
   const buscar = (moneda, detalleTxt) => detalle.find(d => d.Moneda === moneda && (d.Detalle || '').includes(detalleTxt));
 
   const ctaCteArs = buscar('Pesos', 'Cuenta Corriente');
+  const ctaMep = buscar('USD MEP', 'Cuenta Corriente'), ctaCable = buscar('USD', 'Cuenta Corriente');
   // La caución en dólares se toma vendiendo USD (sintético "USD MEP"), no es la cuenta de
   // efectivo en USD real — por eso "USD MEP" tiene prioridad sobre "USD" acá.
-  const ctaCteUsd = buscar('USD MEP', 'Cuenta Corriente') || buscar('USD', 'Cuenta Corriente');
-  const tc = ctaCteUsd ? num(ctaCteUsd.TipoCambio) : (detalle.find(d => num(d.TipoCambio) > 1)?.TipoCambio ? num(detalle.find(d => num(d.TipoCambio) > 1).TipoCambio) : 0);
+  const ctaCteUsd = ctaMep || ctaCable;
+  const tcMep = ctaMep ? num(ctaMep.TipoCambio) : (tcGlobal.mep || 0);
+  const tcCable = ctaCable ? num(ctaCable.TipoCambio) : (tcGlobal.cable || 0);
+  const tc = tcMep || tcCable || (detalle.find(d => num(d.TipoCambio) > 1)?.TipoCambio ? num(detalle.find(d => num(d.TipoCambio) > 1).TipoCambio) : 0);
 
   // Gallo cotiza algunos instrumentos (bonos/ONs/letras) "cada 100 nominales" y otros
   // (acciones/CEDEARs) directo — pero manda "importe" ya calculado bien en los dos casos.
@@ -190,12 +209,18 @@ function armarCliente(cod, cli, mgrMap, portafolio) {
   // Las especies que cotizan en dólares vienen de Gallo con precio/costo/importe en PESOS (ej. GD30 a
   // 87.400 = USD 57 x 1.532). Se pasan a USD con el mismo tipo de cambio que usa la app para
   // volver a pesos, así el total en pesos coincide exactamente con el importe que informa Gallo.
-  const detalleDolares = activos.filter(a => /usd/i.test(a.tipoActivo || '') && a.ticker).map(a => {
+  const esUsd = a => /usd/i.test(a.tipoActivo || '') && a.ticker;
+  const esCable = a => !/mep/i.test(a.tipoActivo || '');
+  const detalleDolares = activos.filter(esUsd).map(a => {
     const d = conFactor(a);
-    if (tc > 0) { d.p = a.precio / tc; d.co = a.costo / tc; d.pa = d.p; }
+    d.cable = esCable(a);
+    d.tcPos = (d.cable ? tcCable : tcMep) || tc;
+    if (d.tcPos > 0) { d.p = a.precio / d.tcPos; d.co = a.costo / d.tcPos; d.pa = d.p; }
     return d;
   });
-  const valorDolaresARS = activos.filter(a => /usd/i.test(a.tipoActivo || '') && a.ticker).reduce((acc, a) => acc + num(a.importe), 0);
+  const valorDolaresARS = activos.filter(esUsd).reduce((acc, a) => acc + num(a.importe), 0);
+  const valorCableARS = activos.filter(a => esUsd(a) && esCable(a)).reduce((acc, a) => acc + num(a.importe), 0);
+  const valorMepARS = valorDolaresARS - valorCableARS;
   const mgr = mgrMap[String(cli?.Manager ?? '')];
 
   return {
@@ -213,10 +238,13 @@ function armarCliente(cod, cli, mgrMap, portafolio) {
       cuentaCorriente: ctaCteArs ? num(ctaCteArs.Importe) : 0,
     },
     dolares: {
-      valorUSD: tc > 0 ? valorDolaresARS / tc : 0,
+      valorUSD: (tcMep > 0 ? valorMepARS / tcMep : 0) + (tcCable > 0 ? valorCableARS / tcCable : 0),
       valorARS: valorDolaresARS,
       cuentaCorrienteUSD: ctaCteUsd ? num(ctaCteUsd.Cantidad || ctaCteUsd.Importe) : 0,
       cuentaCorrienteARS: ctaCteUsd ? num(ctaCteUsd.Importe) : 0,
+      // Desglose por cuenta: efectivo y títulos en USD MEP y en USD cable (cada uno en dólares de su cuenta).
+      mep: { efectivoUSD: ctaMep ? num(ctaMep.Cantidad || 0) : 0, efectivoARS: ctaMep ? num(ctaMep.Importe) : 0, valorUSD: tcMep > 0 ? valorMepARS / tcMep : 0, valorARS: valorMepARS, tc: tcMep },
+      cable: { efectivoUSD: ctaCable ? num(ctaCable.Cantidad || 0) : 0, efectivoARS: ctaCable ? num(ctaCable.Importe) : 0, valorUSD: tcCable > 0 ? valorCableARS / tcCable : 0, valorARS: valorCableARS, tc: tcCable },
     },
     detallePesos,
     detalleDolares,
@@ -231,9 +259,10 @@ async function armarComitentes() {
   const { clientes, managers } = await getIdentidad();
   const portafolio = leerPortafolios();
   const mgrMap = {}; managers.forEach(m => { if (m && m.Codigo != null) mgrMap[String(m.Codigo)] = m; });
+  const tcGlobal = tcDolaresGlobal(portafolio);
   return clientes
     .filter(c => c.CodigoComitente != null)
-    .map(c => armarCliente(String(c.CodigoComitente), c, mgrMap, portafolio));
+    .map(c => armarCliente(String(c.CodigoComitente), c, mgrMap, portafolio, tcGlobal));
 }
 
 // ---------- Sesiones (simple, en memoria — este server solo corre local) ----------

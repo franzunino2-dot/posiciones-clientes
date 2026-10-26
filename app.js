@@ -220,7 +220,7 @@ function renderDashboardCliente(cli) {
   todas.forEach(p => {
     const factorUnidad = p.factorUnidad !== undefined ? p.factorUnidad : (BONOS.includes(p.t) ? 0.01 : 1);
     const factor = p.c * factorUnidad;
-    const fx = p.moneda === "USD" ? (cli.tc || 0) : 1;
+    const fx = p.moneda === "USD" ? (p.tcPos || cli.tc || 0) : 1;
     totalCostoARS += factor * p.co * fx;
     totalResultadosARS += p.resultados * fx;
     totalValorARS += p.importe * fx;
@@ -235,7 +235,7 @@ function renderDashboardCliente(cli) {
   });
 
   const distFilas = todas
-    .map(p => ({ ticker: p.t, valorARS: p.importe * (p.moneda === "USD" ? (cli.tc || 0) : 1) }))
+    .map(p => ({ ticker: p.t, valorARS: p.importe * (p.moneda === "USD" ? (p.tcPos || cli.tc || 0) : 1) }))
     .filter(p => p.valorARS > 0)
     .sort((a, b) => b.valorARS - a.valorARS);
   const distTop = distFilas.slice(0, 8);
@@ -347,11 +347,16 @@ function renderPosiciones(cli) {
       <div class="row ${cli.pesos.cuentaCorriente < 0 ? "neg" : "pos"}">
         <span>Cuenta corriente pesos</span><b>$ ${fmtMoney(cli.pesos.cuentaCorriente)}</b>
       </div>
+      ${cli.dolares.mep && cli.dolares.cable ? [["USD MEP", cli.dolares.mep], ["USD Cable", cli.dolares.cable]].map(([nom, d]) => `
+      <div class="row"><span>Portafolio en ${nom}</span><b>USD ${fmtMoney(d.valorUSD)} · $ ${fmtMoney(d.valorARS)}</b></div>
+      <div class="row ${d.efectivoUSD < 0 ? "neg" : "pos"}">
+        <span>Cuenta corriente ${nom}</span><b>USD ${fmtMoney(d.efectivoUSD)} · $ ${fmtMoney(d.efectivoARS)}</b>
+      </div>`).join("") + `<div class="row"><span>T. Cambio MEP / Cable</span><b>${fmtMoney(cli.dolares.mep.tc)} / ${fmtMoney(cli.dolares.cable.tc)}</b></div>` : `
       <div class="row"><span>Portafolio en dólares</span><b>USD ${fmtMoney(cli.dolares.valorUSD)} · $ ${fmtMoney(cli.dolares.valorARS)}</b></div>
       <div class="row ${cli.dolares.cuentaCorrienteUSD < 0 ? "neg" : "pos"}">
         <span>Cuenta corriente dólares</span><b>USD ${fmtMoney(cli.dolares.cuentaCorrienteUSD)} · $ ${fmtMoney(cli.dolares.cuentaCorrienteARS)}</b>
       </div>
-      <div class="row"><span>T. Cambio</span><b>${fmtMoney(cli.tc)}</b></div>
+      <div class="row"><span>T. Cambio</span><b>${fmtMoney(cli.tc)}</b></div>`}
       ${cli.alertas ? `<div class="alerta">${cli.alertas.map(a => `⚠️ ${a}`).join("<br>")}</div>` : ""}
     </div>
 
@@ -433,7 +438,7 @@ function renderActuales(cli, key, simbolo) {
     const tipo = esBono ? "Bono/Letra" : "Acción/CEDEAR";
     return `
       <tr>
-        <td>${pos.t}<br><span class="muted" style="font-size:11px">${pos.n}</span></td>
+        <td>${pos.t}${key === "detalleDolares" ? ` <span class="cal-on" style="${pos.cable ? "background:rgba(245,158,11,.16);color:#f59e0b" : ""}">${pos.cable ? "CABLE" : "MEP"}</span>` : ""}<br><span class="muted" style="font-size:11px">${pos.n}</span></td>
         <td>${simbolo} ${fmtMoney(importe)}</td>
         <td>${esAdmin() ? `<input type="number" value="${pos.c}" step="any" onchange="editarPosicion('${cli.id}','${key}',${i},'c',this.value)">` : fmtMoney(pos.c, 0)}</td>
         <td>${esAdmin() ? `<input type="number" value="${pos.p}" step="any" onchange="editarPosicion('${cli.id}','${key}',${i},'p',this.value)">` : fmtMoney(pos.p)}</td>
@@ -903,7 +908,7 @@ function especiesVisibles() {
   getClientes().forEach(c => {
     [["ARS", c.detallePesos], ["USD", c.detalleDolares]].forEach(([moneda, lista]) => (lista || []).forEach(p => {
       const { importe } = calcPosicion(p);
-      const fx = moneda === "USD" ? (c.tc || 0) : 1;
+      const fx = moneda === "USD" ? (p.tcPos || c.tc || 0) : 1;
       const e = mapa[p.t] || (mapa[p.t] = { t: p.t, n: p.n, p: p.p, moneda, holders: 0, valorARS: 0 });
       e.holders++; e.valorARS += importe * fx; e.p = p.p;
     }));
