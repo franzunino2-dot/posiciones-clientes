@@ -137,7 +137,24 @@ const historial = require('./historial').crearHistorial({ galloPost, listarComit
 // Posición en vivo: al abrir una cuenta se le pide a Gallo su portafolio en el momento y se usa por encima
 // de la última bajada del crawler (que refresca cada cuenta cada ~45 minutos).
 const portafolioFresco = {}; // código -> { activos, resumen, ts }
-const resultados = require('./pl').crearPL({ historial, leerPortafolios: () => leerPortafolios() });
+// Cronograma de pagos de un título (por 100 VN): el mismo que usa la vista del cliente para el calendario.
+async function cronogramaDe(t) {
+  const P = await cargarPagos();
+  if (!P) return null;
+  const T = String(t).toUpperCase();
+  const base = 'DCO'.includes(T.slice(-1)) && !/\d/.test(T.slice(-1)) ? T.slice(0, -1) : T;
+  const b = P.bonistas || {}, o = P.ons || {};
+  const deB = arr => arr.map(f => ({ fecha: f[0], cupon: f[1] || 0, amort: f[2] || 0 }));
+  const deO = x => x.flujos.map(f => ({ fecha: f[0], cupon: f[1] || 0, amort: f[2] || 0 }));
+  if (b[T]) return deB(b[T]);
+  const bop = T.replace(/^BPO([A-D]\d)$/, 'BP$1D');
+  if (bop !== T && b[bop]) return deB(b[bop]);
+  if (o[base]) return deO(o[base]);
+  for (const s of ['D', 'C', 'O']) if (b[base + s]) return deB(b[base + s]);
+  if (o[T]) return deO(o[T]);
+  return null;
+}
+const resultados = require('./pl').crearPL({ historial, leerPortafolios: () => leerPortafolios(), cronogramaDe });
 function leerPortafolios() {
   let base = {};
   try { base = JSON.parse(fs.readFileSync(PORTAFOLIO_FILE, 'utf8')); } catch (e) { /* sin archivo */ }
@@ -590,6 +607,17 @@ app.post('/api/cuenta/:id/actualizar', requireAuth, async (req, res) => {
 });
 
 // Resultado de la cuenta en un período (pesos y dólares). desde y hasta en AAAA-MM-DD, ambos inclusive.
+// Cobros (dividendos y rentas) y cauciones del período, para la pantalla Rendimiento.
+app.get('/api/cuenta/:id/flujos', requireAuth, async (req, res) => {
+  try {
+    const id = String(req.params.id).replace(/[^0-9]/g, '');
+    const fecha = v => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : null);
+    const visibles = await comitentesVisibles(req.sesion);
+    if (!visibles.some(c => c.id === id)) return res.status(403).json({ ok: false, error: 'Esa cuenta no es de tu cartera' });
+    res.json(await resultados.flujosPeriodo(id, fecha(req.query.desde), fecha(req.query.hasta)));
+  } catch (e) { res.status(502).json({ ok: false, error: String(e.message || e).slice(0, 200) }); }
+});
+
 app.get('/api/cuenta/:id/resultado', requireAuth, async (req, res) => {
   try {
     const id = String(req.params.id).replace(/[^0-9]/g, '');

@@ -21,7 +21,12 @@ const dias = (a, b) => Math.round((Date.parse(b + 'T12:00:00Z') - Date.parse(a +
 const num = v => { const n = parseFloat(String(v).replace(',', '.')); return isFinite(n) ? n : 0; };
 const factorCercano = r => (Math.abs(r - 0.01) < 0.002 ? 0.01 : Math.abs(r - 0.001) < 0.0002 ? 0.001 : Math.abs(r - 1) < 0.15 ? 1 : null);
 
-function crearPL({ historial, leerPortafolios }) {
+// Cauciones: tomadora (T) y colocadora (C), con sus patas de contado y de término. Las patas de una operación
+// tienen la misma fecha de concertación; el costo (o la renta) es lo que queda al sumar las dos.
+const CAUC_T = new Set(['TCCD', 'TOCT', 'TCCM', 'TCTM']), CAUC_C = new Set(['CCCD', 'CCTE', 'CCCM', 'CCTM']);
+const CAUC_CONTADO = new Set(['TCCD', 'TCCM', 'CCCD', 'CCCM']);
+
+function crearPL({ historial, leerPortafolios, cronogramaDe }) {
   // Libro de precios: lo que se operó en cada especie, en cualquier cuenta de Equanima.
   let libro = null, libroTs = 0;
   function armarLibro() {
@@ -196,7 +201,60 @@ function crearPL({ historial, leerPortafolios }) {
     };
   }
 
-  return { calcular };
+  // Cobros (dividendos y rentas) y cauciones de una cuenta entre dos fechas, en la moneda de cada movimiento.
+  // Las rentas de bonos y ONs vienen de Gallo juntas con la amortización ("RENTA Y AMORTIZACION"): con el
+  // cronograma del título se separa lo que es interés de lo que es devolución de capital. Si no hay cronograma
+  // (los títulos que ya pagaron y no figuran en las fuentes) el cobro queda "sin desglose" y no se suma al total.
+  async function flujosPeriodo(id, desde, hasta) {
+    const h = historial.crudoDe(id);
+    if (!h) throw new Error('Todavía no hay historial de esta cuenta');
+    const hoy = isoHoy();
+    const d2 = hasta && hasta < hoy ? hasta : hoy;
+    const en = f => f && (!desde || f >= desde) && f <= d2;
+    const filas = [];
+    h.pesos.forEach(x => filas.push({ ...x, mon: 'ARS' }));
+    h.usd.forEach(x => filas.push({ ...x, mon: 'USD' }));
+
+    const cobros = [];
+    const cache = {};
+    for (const x of filas) {
+      if ((x.c !== 'DIV' && x.c !== 'RTA') || !x.i || !en(x.f)) continue;
+      const base = { f: x.f, t: x.t || '', n: x.e || '', mon: x.mon, monto: x.i };
+      if (x.c === 'DIV') { cobros.push({ ...base, tipo: 'Dividendo', renta: x.i, amort: 0, desglose: true }); continue; }
+      let sched = cache[x.t];
+      if (sched === undefined) { try { sched = (cronogramaDe && await cronogramaDe(x.t)) || null; } catch (e) { sched = null; } cache[x.t] = sched; }
+      let m = null;
+      if (sched) sched.filter(s => s.cupon + s.amort > 0).forEach(s => { const dd = Math.abs(dias(s.fecha, x.f)); if (dd <= 5 && (!m || dd < m.dd)) m = { ...s, dd }; });
+      if (m) { const k = m.cupon / (m.cupon + m.amort); cobros.push({ ...base, tipo: 'Renta', renta: x.i * k, amort: x.i * (1 - k), desglose: true }); }
+      else cobros.push({ ...base, tipo: 'Renta y amortización', renta: null, amort: null, desglose: false });
+    }
+    cobros.sort((a, b) => (a.f < b.f ? 1 : a.f > b.f ? -1 : 0));
+
+    // Cauciones: se agrupan por fecha de concertación, moneda y lado; se cuentan solo las que tienen sus dos patas.
+    const grupos = {};
+    for (const x of filas) {
+      const esT = CAUC_T.has(x.c), esC = CAUC_C.has(x.c);
+      if ((!esT && !esC) || !x.i || !en(x.f)) continue;
+      const k = `${x.f}|${x.mon}|${esT ? 'T' : 'C'}`;
+      const g = grupos[k] || (grupos[k] = { f: x.f, mon: x.mon, lado: esT ? 'T' : 'C', contado: 0, termino: 0, fl: x.fl });
+      if (CAUC_CONTADO.has(x.c)) g.contado += x.i; else { g.termino += x.i; if (x.fl > g.fl) g.fl = x.fl; }
+    }
+    const detalle = [], vacio = () => ({ costo: 0, renta: 0, n: 0 });
+    const tot = { ARS: vacio(), USD: vacio() };
+    let incompletas = 0;
+    Object.values(grupos).forEach(g => {
+      const a = Math.abs(g.contado), b = Math.abs(g.termino);
+      if (!a || !b || b / a < 0.9 || b / a > 1.25) { incompletas++; return; }
+      const neto = g.contado + g.termino; // tomadora: negativo (costo); colocadora: positivo (renta)
+      detalle.push({ f: g.f, fl: g.fl, lado: g.lado === 'T' ? 'Tomadora' : 'Colocadora', mon: g.mon, capital: a, interes: neto });
+      const t = tot[g.mon]; t.n++;
+      if (g.lado === 'T') t.costo += neto; else t.renta += neto;
+    });
+    detalle.sort((a, b) => (a.f < b.f ? 1 : a.f > b.f ? -1 : 0));
+    return { ok: true, id: String(id), desde: desde || null, hasta: d2, cobros, cauciones: { totales: tot, detalle, incompletas } };
+  }
+
+  return { calcular, flujosPeriodo };
 }
 
 module.exports = { crearPL };
