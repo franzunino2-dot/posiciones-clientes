@@ -592,11 +592,37 @@ function borrarGanancia(id, idx) {
 // ---------- Rendimiento ----------
 
 let periodoRendimiento = "hoy";
+let rendFechas = { desde: "", hasta: "" }; // período a elección: si hay alguna fecha, manda por sobre los botones
 
 function setPeriodoRendimiento(p) {
   periodoRendimiento = p;
+  rendFechas = { desde: "", hasta: "" };
   render();
 }
+
+function setFechasRendimiento(k, v) {
+  rendFechas[k] = v;
+  if (rendFechas.desde && rendFechas.hasta && rendFechas.desde > rendFechas.hasta) [rendFechas.desde, rendFechas.hasta] = [rendFechas.hasta, rendFechas.desde];
+  periodoRendimiento = rendFechas.desde || rendFechas.hasta ? "custom" : "hoy";
+  render();
+}
+
+// Rango del período en fechas ISO (desde null = sin límite).
+function rangoRendimiento(periodo) {
+  const hoy = todayStr();
+  const d = new Date(); d.setHours(0, 0, 0, 0);
+  const iso = x => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
+  if (periodo === "hoy") return { desde: hoy, hasta: hoy };
+  if (periodo === "semana") { const x = new Date(d); x.setDate(d.getDate() - 6); return { desde: iso(x), hasta: hoy }; }
+  if (periodo === "mes") return { desde: iso(new Date(d.getFullYear(), d.getMonth(), 1)), hasta: hoy };
+  if (periodo === "año") return { desde: `${d.getFullYear()}-01-01`, hasta: hoy };
+  if (periodo === "custom") return { desde: rendFechas.desde || null, hasta: rendFechas.hasta || hoy };
+  return { desde: null, hasta: hoy }; // total
+}
+
+const REND_MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const rendPnl = g => (parseFloat(g.ventaRescate) || 0) - (parseFloat(g.costo) || 0);
+const rendDmy = f => { if (!f) return "—"; const [y, m, d] = f.split("-"); return `${d}/${m}/${y}`; };
 
 function renderRendimiento(cli) {
   const el = document.getElementById("view-rendimiento");
@@ -607,16 +633,25 @@ function renderRendimiento(cli) {
     { key: "año", label: "Año" },
     { key: "total", label: "Total" },
   ];
-  const tabsHtml = periodos.map(p => `
-    <button class="periodo-btn ${periodoRendimiento === p.key ? "active" : ""}" onclick="setPeriodoRendimiento('${p.key}')">${p.label}</button>
-  `).join("");
+  const { desde, hasta } = rangoRendimiento(periodoRendimiento);
+  const tabsHtml = `
+    <div class="periodo-tabs" style="flex-wrap:wrap;align-items:center">
+      ${periodos.map(p => `<button class="periodo-btn ${periodoRendimiento === p.key ? "active" : ""}" onclick="setPeriodoRendimiento('${p.key}')">${p.label}</button>`).join("")}
+      <span class="pl-fechas" style="margin-left:auto">${periodoRendimiento === "custom" ? "<b>Período elegido</b> · " : "Elegir fechas · "}Desde
+        <input type="date" value="${rendFechas.desde || (periodoRendimiento === "custom" ? "" : desde || "")}" onchange="setFechasRendimiento('desde', this.value)">
+        Hasta <input type="date" value="${rendFechas.hasta || (periodoRendimiento === "custom" ? "" : hasta)}" max="${todayStr()}" onchange="setFechasRendimiento('hasta', this.value)"></span>
+    </div>`;
+
+  const trades = (cli.ganancias || []).filter(g => g.fecha && (!desde || g.fecha >= desde) && g.fecha <= hasta)
+    .sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const tabla = rendTablaTrades(trades, desde, hasta);
 
   if (periodoRendimiento === "hoy") {
     const resultadoDiaPesos = (cli.detallePesos || []).reduce((a, p) => a + calcPosicion(p).resultadoDia, 0);
     const resultadoDiaDolares = (cli.detalleDolares || []).reduce((a, p) => a + calcPosicion(p).resultadoDia, 0);
-    const realizadoHoy = (cli.ganancias || []).filter(g => g.fecha === todayStr()).reduce((a, g) => a + ((parseFloat(g.ventaRescate) || 0) - (parseFloat(g.costo) || 0)), 0);
+    const realizadoHoy = trades.filter(g => (g.moneda || "ARS") === "ARS").reduce((a, g) => a + rendPnl(g), 0);
     el.innerHTML = `
-      <div class="periodo-tabs">${tabsHtml}</div>
+      ${tabsHtml}
       <div class="stats-row">
         <div class="stat-card ${resultadoDiaPesos < 0 ? "warn" : ""}">
           <span class="stat-label">Resultado del día ($)</span>
@@ -632,53 +667,77 @@ function renderRendimiento(cli) {
         </div>
       </div>
       <p class="muted">Basado en el precio vs. precio anterior cargado para cada posición, más lo realizado hoy (ganancias/pérdidas cerradas).</p>
+      ${tabla}
     `;
   } else {
-    renderRendimientoPeriodo(cli, periodoRendimiento, el, tabsHtml);
+    renderRendimientoPeriodo(cli, el, tabsHtml, trades, desde, hasta, tabla);
   }
 }
 
-function getRangoPeriodo(periodo) {
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  let inicio;
-  if (periodo === "semana") {
-    inicio = new Date(hoy); inicio.setDate(hoy.getDate() - 6);
-  } else if (periodo === "mes") {
-    inicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-  } else if (periodo === "año") {
-    inicio = new Date(hoy.getFullYear(), 0, 1);
-  } else {
-    inicio = null; // total
-  }
-  return { inicio, fin: hoy };
+// Operaciones cerradas del período: cuándo se abrió la posición, cuándo se cerró y cuánto se ganó o perdió.
+function rendTablaTrades(trades, desde, hasta) {
+  const rotulo = desde ? `${rendDmy(desde)} al ${rendDmy(hasta)}` : `hasta el ${rendDmy(hasta)}`;
+  if (!trades.length) return `<div class="panel"><h3>Operaciones cerradas</h3><p class="muted">No hay operaciones cerradas entre ${rotulo}.</p></div>`;
+  const dias = (a, b) => (a && b ? Math.round((Date.parse(b + "T12:00:00Z") - Date.parse(a + "T12:00:00Z")) / 86400000) : null);
+  const filas = trades.slice(0, 500).map(g => {
+    const pnl = rendPnl(g), costo = parseFloat(g.costo) || 0, sim = (g.moneda || "ARS") === "USD" ? "USD" : "$";
+    const d = dias(g.apertura, g.fecha);
+    return `<tr>
+      <td><b>${g.ticker}</b></td>
+      <td>${sim === "USD" ? "USD" : "ARS"}</td>
+      <td>${fmtMoney(g.cantidad, 0)}</td>
+      <td>${g.apertura ? rendDmy(g.apertura) : '<span class="muted" title="Compra anterior al historial cargado">—</span>'}</td>
+      <td>${rendDmy(g.fecha)}</td>
+      <td>${d === null ? "—" : d}</td>
+      <td>${sim} ${fmtMoney(costo)}</td>
+      <td>${sim} ${fmtMoney(parseFloat(g.ventaRescate) || 0)}</td>
+      <td class="${pnl < 0 ? "neg" : "pos"}"><b>${pnl > 0 ? "+" : ""}${sim} ${fmtMoney(pnl)}</b></td>
+      <td class="${pnl < 0 ? "neg" : "pos"}">${costo ? (pnl > 0 ? "+" : "") + fmtPct((pnl / costo) * 100) : "—"}</td>
+    </tr>`;
+  }).join("");
+  const tot = mon => trades.filter(g => (g.moneda || "ARS") === mon).reduce((a, g) => a + rendPnl(g), 0);
+  const nUsd = trades.filter(g => g.moneda === "USD").length;
+  const pie = [["ARS", "$"], ...(nUsd ? [["USD", "USD"]] : [])].map(([m, s]) => {
+    const v = tot(m);
+    return `<tr><td colspan="8"><b>Resultado ${m}</b></td><td class="${v < 0 ? "neg" : "pos"}" colspan="2"><b>${v > 0 ? "+" : ""}${s} ${fmtMoney(v)}</b></td></tr>`;
+  }).join("");
+  return `
+    <div class="panel">
+      <h3>Operaciones cerradas · ${rotulo}</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Activo</th><th>Mon.</th><th>Cantidad</th><th>Apertura</th><th>Cierre</th><th>Días</th><th>Costo</th><th>Venta</th><th>Resultado</th><th>%</th></tr></thead>
+        <tbody>${filas}</tbody><tfoot>${pie}</tfoot>
+      </table></div>
+      <p class="muted">Cada fila es una venta. <b>Apertura</b> = fecha de la primera compra de esa posición; el costo es el promedio ponderado de lo comprado hasta la venta. ${trades.length > 500 ? `Se muestran las 500 más recientes de ${trades.length}.` : ""}</p>
+    </div>`;
 }
 
-function renderRendimientoPeriodo(cli, periodo, el, tabsHtml) {
-  const { inicio } = getRangoPeriodo(periodo);
-  const todas = (cli.ganancias || []).filter(g => (g.moneda || "ARS") === "ARS");
-  const enRango = todas.filter(g => !inicio || new Date(g.fecha + "T00:00:00") >= inicio);
-
-  const totalPnl = enRango.reduce((a, g) => a + ((parseFloat(g.ventaRescate) || 0) - (parseFloat(g.costo) || 0)), 0);
-  const totalCosto = enRango.reduce((a, g) => a + (parseFloat(g.costo) || 0), 0);
+function renderRendimientoPeriodo(cli, el, tabsHtml, enRango, desde, hasta, tabla) {
+  const pesos = enRango.filter(g => (g.moneda || "ARS") === "ARS");
+  const dolares = enRango.filter(g => g.moneda === "USD");
+  const totalPnl = pesos.reduce((a, g) => a + rendPnl(g), 0);
+  const totalCosto = pesos.reduce((a, g) => a + (parseFloat(g.costo) || 0), 0);
   const variacionPct = totalCosto ? (totalPnl / totalCosto) * 100 : null;
+  const totalUsd = dolares.reduce((a, g) => a + rendPnl(g), 0);
 
-  // Agrupar para el gráfico: por día si semana/mes, por mes si año/total
-  const porDia = (periodo === "semana" || periodo === "mes");
+  // Agrupar para el gráfico: por día si el rango es corto, por mes si es largo.
+  const primera = enRango.length ? enRango[enRango.length - 1].fecha : hasta;
+  const inicioReal = desde || primera;
+  const dur = Math.round((Date.parse(hasta + "T12:00:00Z") - Date.parse(inicioReal + "T12:00:00Z")) / 86400000);
+  const porDia = dur <= 62;
   const grupos = {};
-  enRango.forEach(g => {
+  pesos.forEach(g => {
     const key = porDia ? g.fecha : g.fecha.slice(0, 7);
-    grupos[key] = (grupos[key] || 0) + ((parseFloat(g.ventaRescate) || 0) - (parseFloat(g.costo) || 0));
+    grupos[key] = (grupos[key] || 0) + rendPnl(g);
   });
   const claves = Object.keys(grupos).sort();
   const maxAbs = Math.max(1, ...claves.map(k => Math.abs(grupos[k])));
-
   const barras = claves.map(k => {
     const v = grupos[k];
     const alturaPct = Math.max(4, (Math.abs(v) / maxAbs) * 100);
-    const label = porDia ? k.slice(5) : k;
+    const label = porDia ? `${k.slice(8)}/${k.slice(5, 7)}` : `${REND_MESES[+k.slice(5) - 1]} ${k.slice(2, 4)}`;
     return `
-      <div class="barcol" title="${label}: $ ${fmtMoney(v)}">
+      <div class="barcol" style="width:${porDia ? 32 : 46}px" title="${porDia ? rendDmy(k) : label}: $ ${fmtMoney(v)}">
         <div class="barwrap"><div class="bar ${v < 0 ? "neg-bar" : "pos-bar"}" style="height:${alturaPct}%"></div></div>
         <span class="barlabel">${label}</span>
       </div>
@@ -686,26 +745,31 @@ function renderRendimientoPeriodo(cli, periodo, el, tabsHtml) {
   }).join("");
 
   el.innerHTML = `
-    <div class="periodo-tabs">${tabsHtml}</div>
+    ${tabsHtml}
     <div class="stats-row">
       <div class="stat-card ${totalPnl < 0 ? "warn" : ""}">
-        <span class="stat-label">Ganancia realizada del período</span>
+        <span class="stat-label">Ganancia realizada del período ($)</span>
         <span class="stat-value ${totalPnl < 0 ? "neg" : "pos"}">$ ${fmtMoney(totalPnl)}</span>
       </div>
       <div class="stat-card">
         <span class="stat-label">Variación %</span>
         <span class="stat-value ${variacionPct !== null && variacionPct < 0 ? "neg" : "pos"}">${variacionPct !== null ? fmtPct(variacionPct) : "-"}</span>
       </div>
+      ${dolares.length ? `<div class="stat-card ${totalUsd < 0 ? "warn" : ""}">
+        <span class="stat-label">Ganancia realizada del período (USD)</span>
+        <span class="stat-value ${totalUsd < 0 ? "neg" : "pos"}">USD ${fmtMoney(totalUsd)}</span>
+      </div>` : ""}
       <div class="stat-card">
         <span class="stat-label">Operaciones cerradas</span>
         <span class="stat-value">${enRango.length}</span>
       </div>
     </div>
     <div class="panel">
-      <h3>Rendimiento del período ${porDia ? "· por día" : "· por mes"}</h3>
-      ${claves.length ? `<div class="barchart">${barras}</div>` : `<p class="muted">No hay ganancias realizadas registradas en este período.</p>`}
+      <h3>Rendimiento del período ${porDia ? "· por día" : "· por mes"} (en pesos)</h3>
+      ${claves.length ? `<div class="barchart">${barras}</div>` : `<p class="muted">No hay ganancias realizadas en pesos registradas en este período.</p>`}
     </div>
-    <p class="muted">Solo incluye ganancias/pérdidas realizadas (posiciones cerradas) en pesos. No incluye P&L no realizado de posiciones abiertas.</p>
+    ${tabla}
+    <p class="muted">Solo incluye ganancias/pérdidas realizadas (posiciones cerradas). No incluye P&L no realizado de posiciones abiertas.</p>
   `;
 }
 

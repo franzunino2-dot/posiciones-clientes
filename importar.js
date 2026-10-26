@@ -94,13 +94,14 @@ function reconstruirActivity(filas) {
 
   const pools = {};
   const sucios = {}, mixtos = [], ganancias = [];
-  const pool = (t) => pools[t] || (pools[t] = { ARS: { q: 0, c: 0 }, USD: { q: 0, c: 0 } });
+  const pool = (t) => pools[t] || (pools[t] = { ARS: { q: 0, c: 0, abre: null }, USD: { q: 0, c: 0, abre: null } });
   ops.forEach(f => {
     const ccy = f.moneda === "PESOS" ? "ARS" : "USD";
     const imp = Math.abs(ccy === "ARS" ? (f.impPesos ?? 0) : (f.impMoneda ?? 0));
     const q = Math.abs(f.cant);
     const p = pool(f.ticker);
-    if (IMP_COMPRAS.includes(f.comp) || IMP_INGRESOS.includes(f.comp)) { p[ccy].q += q; p[ccy].c += imp; return; }
+    // "abre" = fecha de la primera compra de la posición (desde que la tenencia estaba en cero).
+    if (IMP_COMPRAS.includes(f.comp) || IMP_INGRESOS.includes(f.comp)) { if (p[ccy].q < 1e-6) p[ccy].abre = f.fecha; p[ccy].q += q; p[ccy].c += imp; return; }
     const otra = ccy === "ARS" ? "USD" : "ARS";
     const total = p.ARS.q + p.USD.q;
     if (total + 1e-6 < q) { sucios[f.ticker] = `vendió/sacó ${q} el ${f.fecha} y solo había ${total} (tenencia previa no registrada)`; p.ARS = { q: 0, c: 0 }; p.USD = { q: 0, c: 0 }; return; }
@@ -108,7 +109,7 @@ function reconstruirActivity(filas) {
     const deEsta = Math.min(q, propio.q), deOtra = q - deEsta;
     const avg = propio.q ? propio.c / propio.q : 0;
     const esVenta = IMP_VENTAS.includes(f.comp);
-    if (esVenta && deOtra < 1e-6) ganancias.push({ fecha: f.fecha, ticker: f.ticker, cantidad: q, costo: Math.round(avg * q * 100) / 100, ventaRescate: Math.round(imp * 100) / 100, moneda: ccy });
+    if (esVenta && deOtra < 1e-6) ganancias.push({ fecha: f.fecha, ticker: f.ticker, cantidad: q, costo: Math.round(avg * q * 100) / 100, ventaRescate: Math.round(imp * 100) / 100, moneda: ccy, apertura: propio.abre || null });
     else if (esVenta) mixtos.push({ fecha: f.fecha, ticker: f.ticker, cantidad: q, motivo: `se compró en ${otra} y se vendió en ${ccy}` });
     propio.c -= avg * deEsta; propio.q -= deEsta;
     if (deOtra > 1e-6) { const po = p[otra]; const a2 = po.q ? po.c / po.q : 0; po.c -= a2 * deOtra; po.q -= deOtra; }

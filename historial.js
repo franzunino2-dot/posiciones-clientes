@@ -12,7 +12,8 @@ const vm = require('vm');
 const DIR = path.join(__dirname, 'historial');
 const INDICE = path.join(DIR, '_ganancias.json'); // { id: { actualizado, ganancias } } para no leer 800 archivos por pedido
 const DESDE = '01/01/2020';
-const VERSION = 3;                                // se sube cuando cambia cómo se arma el historial: fuerza a bajar todo de nuevo
+const FORMATO = 2;                                // se sube cuando cambia lo que guarda cada ganancia (se rearma desde lo ya bajado, sin ir a Gallo)
+const VERSION = 3;                              // se sube cuando cambia cómo se arma el historial: fuerza a bajar todo de nuevo
 const VIGENCIA_MS = 20 * 3600 * 1000;             // se vuelve a bajar una cuenta si tiene más de 20 horas
 
 const pad = n => String(n).padStart(2, '0');
@@ -188,7 +189,7 @@ function crearHistorial({ galloPost, listarComitentes }) {
     const h = await bajar(id);
     const g = aGanancias(h);
     fs.writeFileSync(archivo(id), JSON.stringify(h));
-    indice[String(id)] = { v: VERSION, actualizado: h.actualizado, ganancias: g.ganancias, operaciones: g.operaciones };
+    indice[String(id)] = { v: VERSION, fmt: FORMATO, actualizado: h.actualizado, ganancias: g.ganancias, operaciones: g.operaciones };
     if (++sucio >= 25) guardarIndice();
     const suma = mon => Math.round(g.ganancias.filter(x => x.moneda === mon).reduce((a, x) => a + x.ventaRescate - x.costo, 0));
     return { id: String(id), pesos: h.pesos.length, usd: h.usd.length, ganancias: g.ganancias.length, realizadoARS: suma('ARS'), realizadoUSD: suma('USD'), primera: g.ganancias.map(x => x.fecha).sort()[0] || null, sucios: g.sucios, mixtos: g.mixtos.length, ignorados: g.ignorados };
@@ -234,7 +235,16 @@ function crearHistorial({ galloPost, listarComitentes }) {
     crudoDe: id => { try { return JSON.parse(fs.readFileSync(archivo(id), 'utf8')); } catch (e) { return null; } },
     // Arranque: espera un poco a que el servidor esté listo, baja lo que falta y revisa cada 3 horas.
     iniciar() {
-      const ciclo = () => refrescarTodas(false).catch(e => { estado.ultimoError = String(e.message || e).slice(0, 160); });
+      // Las ganancias guardadas con un formato viejo se rearman desde los movimientos ya bajados (no se pide nada a Gallo).
+      let rearmadas = 0;
+      Object.keys(indice).filter(id => indice[id].fmt !== FORMATO).forEach(id => {
+        try {
+          const h = JSON.parse(fs.readFileSync(archivo(id), 'utf8')), g = aGanancias(h);
+          indice[id] = { ...indice[id], fmt: FORMATO, ganancias: g.ganancias, operaciones: g.operaciones }; rearmadas++;
+        } catch (e) { /* queda como estaba y se rearma en la próxima bajada */ }
+      });
+      if (rearmadas) guardarIndice();
+      const ciclo =() => refrescarTodas(false).catch(e => { estado.ultimoError = String(e.message || e).slice(0, 160); });
       setTimeout(ciclo, 20000);
       setInterval(ciclo, 3 * 3600 * 1000);
     },
