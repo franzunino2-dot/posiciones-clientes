@@ -608,7 +608,7 @@ function setFechasRendimiento(k, v) {
 }
 
 // Rango del período en fechas ISO (desde null = sin límite).
-function rangoRendimiento(periodo) {
+function rangoRendimiento(periodo, fechas = rendFechas) {
   const hoy = todayStr();
   const d = new Date(); d.setHours(0, 0, 0, 0);
   const iso = x => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
@@ -616,7 +616,7 @@ function rangoRendimiento(periodo) {
   if (periodo === "semana") { const x = new Date(d); x.setDate(d.getDate() - 6); return { desde: iso(x), hasta: hoy }; }
   if (periodo === "mes") return { desde: iso(new Date(d.getFullYear(), d.getMonth(), 1)), hasta: hoy };
   if (periodo === "año") return { desde: `${d.getFullYear()}-01-01`, hasta: hoy };
-  if (periodo === "custom") return { desde: rendFechas.desde || null, hasta: rendFechas.hasta || hoy };
+  if (periodo === "custom") return { desde: fechas.desde || null, hasta: fechas.hasta || hoy };
   return { desde: null, hasta: hoy }; // total
 }
 

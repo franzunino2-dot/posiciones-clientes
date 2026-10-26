@@ -5,9 +5,9 @@
 const clienteVista = { id: null, tab: "inicio", staff: false, cal: null, moneda: "ARS" };
 try { clienteVista.moneda = sessionStorage.getItem("monedaCli") || "ARS"; } catch (e) { /* sin storage */ }
 // Estado de las pantallas nuevas: filtros del calendario, modo del cashflow y filtros de Actividad.
-Object.assign(clienteVista, { calTipo: "Todos", cashModo: "grafico", cashTicker: "", dia: null, act: { q: "", tipo: "Todos", n: 25 } });
+Object.assign(clienteVista, { calTipo: "Todos", cashModo: "grafico", cashTicker: "", dia: null, act: { q: "", tipo: "Todos", n: 25 }, rend: { periodo: "mes", desde: "", hasta: "" } });
 
-let ACT = null;                    // movimientos del comitente: [{ f, a, m, t, c, q, p, n }]
+let ACT = null;                   // movimientos del comitente: [{ f, a, m, t, c, q, p, n }]
 let ACT_ESTADO = "pendiente";      // pendiente | cargando | listo
 
 let PAGOS = null;            // { bonistas: { SIMBOLO: [[fecha, cupon, amort, moneda]] }, ons: { BASE: { moneda, flujos } } }
@@ -203,7 +203,7 @@ function abrirVistaCliente(id, staff) {
   clienteVista.staff = !!staff;
   clienteVista.tab = "inicio";
   clienteVista.cal = null;
-  Object.assign(clienteVista, { calTipo: "Todos", cashModo: "grafico", cashTicker: "", dia: null, act: { q: "", tipo: "Todos", n: 25 } });
+  Object.assign(clienteVista, { calTipo: "Todos", cashModo: "grafico", cashTicker: "", dia: null, act: { q: "", tipo: "Todos", n: 25 }, rend: { periodo: "mes", desde: "", hasta: "" } });
   ACT = null; ACT_ESTADO = "pendiente";
   document.getElementById("app").style.display = "none";
   document.getElementById("clienteApp").style.display = "block";
@@ -245,11 +245,12 @@ function renderCliente() {
   if (!cli) { el.innerHTML = `<p style="padding:30px">No se encontró la cuenta.</p>`; return; }
   const tasas = tasasCliente(cli);
   const mon = monedaEfectiva(cli);
-  const tabs = [["inicio", "Inicio"], ["portafolio", "Portafolio"], ["actividad", "Actividad"], ["calendario", "Calendario"]];
+  const tabs = [["inicio", "Inicio"], ["portafolio", "Portafolio"], ["rendimiento", "Rendimiento"], ["actividad", "Actividad"], ["calendario", "Calendario"]];
   const monedas = [["ARS", "ARS"], ["MEP", "USD MEP"], ["CCL", "USD CCL"]];
 
   let cuerpo = "";
   if (clienteVista.tab === "portafolio") cuerpo = cvPortafolio(cli);
+  else if (clienteVista.tab === "rendimiento") cuerpo = cvRendimiento(cli);
   else if (clienteVista.tab === "actividad") cuerpo = cvActividad(cli);
   else if (clienteVista.tab === "calendario") cuerpo = cvCalendario(cli);
   else cuerpo = cvInicio(cli);
@@ -448,6 +449,93 @@ function cvPortafolio(cli) {
         <div class="cv-donut" style="background:conic-gradient(${gradiente})"><div><span class="cv-sub">Total</span><b>${fmtMon(cli, total)}</b></div></div>
         <ul class="cv-leyenda">${trozos.map(t => `<li><i style="background:${t.color}"></i>${esc(t.nombre)}<span>${total ? fmtPct(t.ars / total * 100) : "-"}</span></li>`).join("")}</ul>
       </div>`)}`;
+}
+
+// ---------- Rendimiento ----------
+// Mismo contenido que la pantalla Rendimiento del manager (resultado del período, gráfico y operaciones cerradas
+// con apertura, cierre y resultado); los cálculos de fechas y resultado son los de app.js.
+
+const CV_REND_PERIODOS = [["hoy", "Hoy"], ["semana", "Semana"], ["mes", "Mes"], ["año", "Año"], ["total", "Total"]];
+function cvRendPeriodo(p) { clienteVista.rend = { periodo: p, desde: "", hasta: "" }; renderCliente(); }
+function cvRendFechas(k, v) {
+  const r = clienteVista.rend;
+  r[k] = v;
+  if (r.desde && r.hasta && r.desde > r.hasta) [r.desde, r.hasta] = [r.hasta, r.desde];
+  r.periodo = r.desde || r.hasta ? "custom" : "mes";
+  renderCliente();
+}
+
+function cvRendimiento(cli) {
+  const r = clienteVista.rend, { desde, hasta } = rangoRendimiento(r.periodo, r);
+  const hoyStr = todayStr();
+  const trades = (cli.ganancias || []).filter(g => g.fecha && (!desde || g.fecha >= desde) && g.fecha <= hasta).sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const pesos = trades.filter(g => (g.moneda || "ARS") === "ARS"), dolares = trades.filter(g => g.moneda === "USD");
+  const totalPnl = pesos.reduce((a, g) => a + rendPnl(g), 0), totalCosto = pesos.reduce((a, g) => a + (parseFloat(g.costo) || 0), 0);
+  const totalUsd = dolares.reduce((a, g) => a + rendPnl(g), 0);
+  const pct = totalCosto ? totalPnl / totalCosto * 100 : null;
+  const clase = v => (v < 0 ? "cv-rojo" : "cv-verde"), sg = v => (v > 0 ? "+" : "");
+  const rotulo = desde ? `${rendDmy(desde)} al ${rendDmy(hasta)}` : `hasta el ${rendDmy(hasta)}`;
+
+  const controles = `
+    <div class="cv-filtros" style="justify-content:space-between">
+      <div class="cv-mon">${CV_REND_PERIODOS.map(([k, n]) => `<button class="${r.periodo === k ? "on" : ""}" onclick="cvRendPeriodo('${k}')">${n}</button>`).join("")}</div>
+      <div class="cv-filtros" style="margin:0"><span class="cv-sub">${r.periodo === "custom" ? "<b>Período elegido</b> · " : "Elegir fechas · "}Desde</span>
+        <input type="date" style="min-width:0" value="${r.desde || (r.periodo === "custom" ? "" : desde || "")}" onchange="cvRendFechas('desde', this.value)">
+        <span class="cv-sub">Hasta</span><input type="date" style="min-width:0" max="${hoyStr}" value="${r.hasta || (r.periodo === "custom" ? "" : hasta)}" onchange="cvRendFechas('hasta', this.value)"></div>
+    </div>`;
+
+  // Tarjetas: hoy muestra además el resultado del día de las tenencias.
+  let kpis;
+  if (r.periodo === "hoy") {
+    const difPesos = (cli.detallePesos || []).reduce((a, p) => a + calcPosicion(p).resultadoDia, 0);
+    const difUsd = (cli.detalleDolares || []).reduce((a, p) => a + calcPosicion(p).resultadoDia, 0);
+    kpis = `
+      <section class="cv-card cv-kpi"><span class="cv-etq">Resultado del día ($)</span><div class="cv-kpi-n ${clase(difPesos)}">${sg(difPesos)}$ ${fmtMoney(difPesos, 0)}</div></section>
+      <section class="cv-card cv-kpi"><span class="cv-etq">Resultado del día (USD)</span><div class="cv-kpi-n ${clase(difUsd)}">${sg(difUsd)}USD ${fmtMoney(difUsd, 2)}</div></section>
+      <section class="cv-card cv-kpi"><span class="cv-etq">Realizado hoy ($)</span><div class="cv-kpi-n ${clase(totalPnl)}">${sg(totalPnl)}$ ${fmtMoney(totalPnl, 0)}</div></section>`;
+  } else {
+    kpis = `
+      <section class="cv-card cv-kpi"><span class="cv-etq">Ganancia realizada ($)</span><div class="cv-kpi-n ${clase(totalPnl)}">${sg(totalPnl)}$ ${fmtMoney(totalPnl, 0)}${pct !== null ? ` <small>${sg(pct)}${fmtPct(pct)}</small>` : ""}</div><span class="cv-sub">${rotulo}</span></section>
+      ${dolares.length ? `<section class="cv-card cv-kpi"><span class="cv-etq">Ganancia realizada (USD)</span><div class="cv-kpi-n ${clase(totalUsd)}">${sg(totalUsd)}USD ${fmtMoney(totalUsd, 2)}</div><span class="cv-sub">${dolares.length} operaciones en dólares</span></section>` : ""}
+      <section class="cv-card cv-kpi"><span class="cv-etq">Operaciones cerradas</span><div class="cv-kpi-n">${trades.length}</div><span class="cv-sub">${rotulo}</span></section>`;
+  }
+
+  // Gráfico: por día si el rango es corto, por mes si es largo (resultado en pesos).
+  let grafico = "";
+  if (r.periodo !== "hoy") {
+    const primera = trades.length ? trades[trades.length - 1].fecha : hasta;
+    const dur = Math.round((Date.parse(hasta + "T12:00:00Z") - Date.parse((desde || primera) + "T12:00:00Z")) / 86400000);
+    const porDia = dur <= 62, grupos = {};
+    pesos.forEach(g => { const k = porDia ? g.fecha : g.fecha.slice(0, 7); grupos[k] = (grupos[k] || 0) + rendPnl(g); });
+    const claves = Object.keys(grupos).sort(), maxAbs = Math.max(1, ...claves.map(k => Math.abs(grupos[k])));
+    const barras = claves.map(k => {
+      const v = grupos[k], alto = Math.max(4, Math.abs(v) / maxAbs * 100);
+      const etq = porDia ? `${k.slice(8)}/${k.slice(5, 7)}` : `${REND_MESES[+k.slice(5) - 1]} ${k.slice(2, 4)}`;
+      return `<div class="cv-rb" style="width:${porDia ? 34 : 50}px" title="${porDia ? rendDmy(k) : etq}: ${sg(v)}$ ${fmtMoney(v, 0)}"><div class="cv-rb-w"><i class="${v < 0 ? "neg" : "pos"}" style="height:${alto}%"></i></div><span>${etq}</span></div>`;
+    }).join("");
+    grafico = cvTarjeta(`Rendimiento ${porDia ? "por día" : "por mes"} (en pesos)`, claves.length ? `<div class="cv-rb-barras">${barras}</div>` : `<p class="cv-vacio">No hay ganancias realizadas en pesos en este período.</p>`);
+  }
+
+  // Operaciones cerradas: cuándo se abrió la posición, cuándo se cerró y cuánto se ganó o perdió.
+  const dias = (a, b) => (a && b ? Math.round((Date.parse(b + "T12:00:00Z") - Date.parse(a + "T12:00:00Z")) / 86400000) : null);
+  const filas = trades.slice(0, 500).map(g => {
+    const pnl = rendPnl(g), costo = parseFloat(g.costo) || 0, sim = g.moneda === "USD" ? "USD " : "$ ", d = dias(g.apertura, g.fecha);
+    return `<tr>
+      <td><b>${esc(g.ticker)}</b></td><td>${g.moneda === "USD" ? "USD" : "ARS"}</td><td class="n">${fmtMoney(g.cantidad, 0)}</td>
+      <td class="nw">${g.apertura ? rendDmy(g.apertura) : "—"}</td><td class="nw">${rendDmy(g.fecha)}</td><td class="n">${d === null ? "—" : d}</td>
+      <td class="n">${sim}${fmtMoney(costo, g.moneda === "USD" ? 2 : 0)}</td><td class="n">${sim}${fmtMoney(parseFloat(g.ventaRescate) || 0, g.moneda === "USD" ? 2 : 0)}</td>
+      <td class="n ${clase(pnl)}"><b>${sg(pnl)}${sim}${fmtMoney(pnl, g.moneda === "USD" ? 2 : 0)}</b></td>
+      <td class="n ${clase(pnl)}">${costo ? sg(pnl) + fmtPct(pnl / costo * 100) : "—"}</td></tr>`;
+  }).join("");
+  const tabla = cvTarjeta(`Operaciones cerradas · ${rotulo}`, trades.length ? `
+    <div class="cv-tabla"><table>
+      <thead><tr><th>Activo</th><th>Mon.</th><th class="n">Cantidad</th><th>Apertura</th><th>Cierre</th><th class="n">Días</th><th class="n">Costo</th><th class="n">Venta</th><th class="n">Resultado</th><th class="n">%</th></tr></thead>
+      <tbody>${filas}</tbody>
+    </table></div>
+    <p class="cv-nota">Cada fila es una venta. Apertura = fecha de la primera compra de esa posición; el costo es el promedio ponderado de lo comprado hasta la venta. Solo incluye resultados realizados (posiciones cerradas); lo no realizado está en Portafolio.${trades.length > 500 ? ` Se muestran las 500 más recientes de ${trades.length}.` : ""}</p>`
+    : `<p class="cv-vacio">No hay operaciones cerradas entre ${rotulo}.</p>`);
+
+  return `${controles}<div class="cv-grid cv-grid3">${kpis}</div>${grafico}${tabla}`;
 }
 
 // ---------- Actividad ----------
