@@ -1214,6 +1214,49 @@ async function actualizarCuentaEnVivo(id, forzar) {
   if (clienteVista.id) renderCliente(); else render();
 }
 
+// Pulso: mientras se mira una cuenta se le pregunta a Gallo cada 20 s si cambió algo. Si el cliente compró, vendió
+// o movió fondos, se avisa y se actualizan posición, actividad y resultados sin tener que tocar nada.
+function cuentaEnPantalla() {
+  if (!sesion || !sesion.token || !LIVE_CLIENTES || document.hidden) return null;
+  if (clienteVista.id) return clienteVista.id;
+  if (esAdmin() && VISTAS_CON_SELECTOR.includes(vistaActual) && clienteActualId) return clienteActualId;
+  return null;
+}
+function avisoCuenta(texto) {
+  let el = document.getElementById("avisoCuenta");
+  if (!el) { el = document.createElement("div"); el.id = "avisoCuenta"; document.body.appendChild(el); }
+  el.textContent = texto; el.classList.add("on");
+  clearTimeout(avisoCuenta.t); avisoCuenta.t = setTimeout(() => el.classList.remove("on"), 9000);
+}
+let pulsoEnVuelo = false;
+async function pulsoCuenta() {
+  const id = cuentaEnPantalla();
+  if (!id || pulsoEnVuelo || !VIVO.ult[id]) return; // la primera foto la saca la actualización al abrir la cuenta
+  pulsoEnVuelo = true;
+  try {
+    const r = await fetch("/api/cuenta/" + encodeURIComponent(id) + "/pulso", { method: "POST", headers: { Authorization: "Bearer " + sesion.token } });
+    const j = await r.json();
+    if (!j.ok || !j.comitente || cuentaEnPantalla() !== id) return;
+    const i = LIVE_CLIENTES.findIndex(c => c.id === id), antes = i >= 0 ? LIVE_CLIENTES[i] : null;
+    if (i >= 0) LIVE_CLIENTES[i] = j.comitente; else LIVE_CLIENTES.push(j.comitente);
+    VIVO.texto = "En vivo · " + new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    pintarVivo();
+    const mueveTotal = antes && Math.abs((j.comitente.totalPortfolio || 0) - (antes.totalPortfolio || 0)) > Math.max(1, Math.abs(antes.totalPortfolio || 0) * 0.00005);
+    if (j.cambio) {
+      Object.keys(RENDF).filter(k => k.startsWith(id + "|")).forEach(k => delete RENDF[k]); // cobros y cauciones se vuelven a pedir
+      VIVO.ult[id] = Date.now();
+      const det = (j.cambios || []).slice(0, 4).map(c => `${c.t} ${c.delta > 0 ? "+" : "−"}${fmtMoney(Math.abs(c.delta), 0)}`).join(", ");
+      avisoCuenta(`Movimiento en la cuenta ${id}${det ? ": " + det : ": cambió un saldo"}. Se actualizó la posición${j.historialOk ? " y el historial" : ""}.`);
+      if (clienteVista.id === id) { ACT = null; ACT_ESTADO = "pendiente"; cargarActividadCliente(); }
+    }
+    // Sin cambios de cantidades solo se repinta si los precios movieron el total, y nunca con un campo en edición.
+    const editando = document.activeElement && /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName);
+    if ((j.cambio || mueveTotal) && !editando) { if (clienteVista.id) renderCliente(); else render(); }
+  } catch (e) { /* sin red: se reintenta en el próximo pulso */ }
+  finally { pulsoEnVuelo = false; }
+}
+setInterval(pulsoCuenta, 20000);
+
 // ---------- Login ----------
 // Dos modos, elegidos automáticamente según si el backend (servidor.js) está corriendo:
 //  - LIVE: hay backend local conectado a Gallo/EGWS. El email se valida en vivo contra

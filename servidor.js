@@ -606,6 +606,50 @@ app.post('/api/cuenta/:id/actualizar', requireAuth, async (req, res) => {
   } catch (e) { res.status(502).json({ ok: false, error: String(e.message || e).slice(0, 200) }); }
 });
 
+// Pulso de una cuenta que se está mirando: la página lo pide cada ~20 s. Es un solo pedido liviano a Gallo (la
+// posición); si cambió la cantidad de algún título o un saldo (compra, venta, depósito, cobro) recién ahí se baja
+// también el historial, para que Actividad, Rendimiento y el resultado reflejen la operación enseguida.
+const firmaCuenta = p => {
+  const act = (p.activos || []).filter(a => a.ticker).map(a => a.ticker + ':' + a.cantidad).sort().join('|');
+  const caja = ((p.resumen || {}).Detalle || []).filter(d => /Cuenta Corriente|Liquidar/i.test(d.Detalle || '')).map(d => d.Moneda + d.Detalle + ':' + (d.Cantidad ?? d.Importe)).sort().join('|');
+  return act + '#' + caja;
+};
+const cantidades = p => Object.fromEntries((p.activos || []).filter(a => a.ticker).map(a => [a.ticker, a.cantidad]));
+const pulsoEnCurso = {};
+app.post('/api/cuenta/:id/pulso', requireAuth, async (req, res) => {
+  try {
+    const id = String(req.params.id).replace(/[^0-9]/g, '');
+    const visibles = await comitentesVisibles(req.sesion);
+    if (!visibles.some(c => c.id === id)) return res.status(403).json({ ok: false, error: 'Esa cuenta no es de tu cartera' });
+    const previo = pulsoEnCurso[id];
+    let tarea = previo && Date.now() - previo.t < 8000 ? previo.p : null;
+    if (!tarea) {
+      tarea = (async () => {
+        const antes = leerPortafolios()[id];
+        await reintentar(async () => {
+          const r = await galloPost('PortafolioReducido', { comi: id });
+          if (!r || r.IsOK === false) throw new Error(String(r && r.Error || 'sin respuesta').slice(0, 120));
+          portafolioFresco[id] = { ...parsePortafolio(r), ts: Date.now() };
+        });
+        const cambio = !!antes && firmaCuenta(antes) !== firmaCuenta(portafolioFresco[id]);
+        const cambios = [];
+        if (cambio) {
+          const a = cantidades(antes), b = cantidades(portafolioFresco[id]);
+          new Set([...Object.keys(a), ...Object.keys(b)]).forEach(t => { const d = (b[t] || 0) - (a[t] || 0); if (Math.abs(d) > 1e-9) cambios.push({ t, delta: d, ahora: b[t] || 0 }); });
+        }
+        let historialOk = null;
+        if (cambio) { try { await reintentar(() => historial.actualizar(id)); historialOk = true; } catch (e) { historialOk = false; } }
+        return { cambio, cambios, historialOk };
+      })();
+      pulsoEnCurso[id] = { t: Date.now(), p: tarea };
+      tarea.catch(() => { delete pulsoEnCurso[id]; });
+    }
+    const r = await tarea;
+    const actual = (await comitentesVisibles(req.sesion)).find(c => c.id === id);
+    res.json({ ok: true, comitente: actual, ts: Date.now(), ...r });
+  } catch (e) { res.status(502).json({ ok: false, error: String(e.message || e).slice(0, 200) }); }
+});
+
 // Resultado de la cuenta en un período (pesos y dólares). desde y hasta en AAAA-MM-DD, ambos inclusive.
 // Cobros (dividendos y rentas) y cauciones del período, para la pantalla Rendimiento.
 app.get('/api/cuenta/:id/flujos', requireAuth, async (req, res) => {
