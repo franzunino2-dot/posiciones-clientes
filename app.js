@@ -69,11 +69,14 @@ function calcPosicion(pos) {
   const factorUnidad = pos.factorUnidad !== undefined ? pos.factorUnidad : (BONOS.includes(pos.t) ? 0.01 : 1);
   const factor = pos.c * factorUnidad;
   const importe = factor * pos.p;
-  const resultados = factor * (pos.p - pos.co);
-  const varPct = pos.co ? ((pos.p - pos.co) / pos.co) * 100 : 0;
+  // Gallo trae costo en cero o negativo en posiciones que ingresaron sin costo (transferencias, canjes): no hay
+  // rendimiento que calcular, y tomarlo como "todo ganancia" inflaba el P&L (hasta -2.266%). Esas quedan afuera.
+  const sinCosto = !(pos.co > 0);
+  const resultados = sinCosto ? 0 : factor * (pos.p - pos.co);
+  const varPct = sinCosto ? 0 : ((pos.p - pos.co) / pos.co) * 100;
   const resultadoDia = factor * (pos.p - pos.pa);
   const varDiaPct = pos.pa ? ((pos.p - pos.pa) / pos.pa) * 100 : 0;
-  return { importe, resultados, varPct, resultadoDia, varDiaPct };
+  return { importe, resultados, varPct, resultadoDia, varDiaPct, sinCosto };
 }
 
 function diasEntre(fechaInicioStr) {
@@ -221,7 +224,7 @@ function renderDashboardCliente(cli) {
     const factorUnidad = p.factorUnidad !== undefined ? p.factorUnidad : (BONOS.includes(p.t) ? 0.01 : 1);
     const factor = p.c * factorUnidad;
     const fx = p.moneda === "USD" ? (p.tcPos || cli.tc || 0) : 1;
-    totalCostoARS += factor * p.co * fx;
+    if (!p.sinCosto) totalCostoARS += factor * p.co * fx;
     totalResultadosARS += p.resultados * fx;
     totalValorARS += p.importe * fx;
   });
@@ -229,7 +232,7 @@ function renderDashboardCliente(cli) {
 
   let mejor = null, peor = null;
   todas.forEach(p => {
-    if (!p.co) return;
+    if (p.sinCosto) return;
     if (!mejor || p.varPct > mejor.varPct) mejor = p;
     if (!peor || p.varPct < peor.varPct) peor = p;
   });

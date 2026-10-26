@@ -282,6 +282,7 @@ function resultadosCliente(cli) {
   const tc = cli.tc || 0;
   let noReal = 0, costoAbierto = 0;
   posicionesCliente(cli).forEach(p => {
+    if (!(p.co > 0)) return; // sin costo en Gallo: no entra al rendimiento
     const fx = p.mon === "USD" ? (p.tcPos || tc) : 1;
     const factor = p.c * (p.factorUnidad !== undefined ? p.factorUnidad : (BONOS.includes(p.t) ? 0.01 : 1));
     noReal += (p.importe - factor * p.co) * fx;
@@ -389,7 +390,7 @@ function cvPortafolio(cli) {
   const tc = cli.tc || 0;
   const pos = posicionesCliente(cli).map(p => {
     const c = calcPosicion(p), fx = p.mon === "USD" ? (p.tcPos || tc) : 1;
-    return { ...p, clase: claseActivo(p), valorARS: c.importe * fx, costoARS: (c.importe - c.resultados) * fx, pnlARS: c.resultados * fx };
+    return { ...p, clase: claseActivo(p), sinCosto: c.sinCosto, valorARS: c.importe * fx, costoARS: c.sinCosto ? 0 : (c.importe - c.resultados) * fx, pnlARS: c.resultados * fx };
   });
   const total = pos.reduce((a, p) => a + p.ars, 0);
   const costo = pos.reduce((a, p) => a + p.costoARS, 0), pnlNoReal = pos.reduce((a, p) => a + p.pnlARS, 0);
@@ -412,9 +413,9 @@ function cvPortafolio(cli) {
       <td class="n">${p.mon === "USD" ? "USD " : "$ "}${fmtMoney(p.p, 2)}</td>
       <td>${esc(p.clase)}</td>
       <td class="n">${fmtMoney(p.c, 0)}</td>
-      <td class="n">${fmtMon(cli, p.costoARS)}</td>
+      <td class="n">${p.sinCosto ? "—" : fmtMon(cli, p.costoARS)}</td>
       <td class="n"><b>${fmtMon(cli, p.valorARS)}</b></td>
-      <td class="n ${p.pnlARS < 0 ? "cv-rojo" : "cv-verde"}">${p.co ? (p.pnlARS > 0 ? "+" : "") + fmtMon(cli, p.pnlARS) : "—"}<span class="cv-sub">${p.co ? (p.varPct > 0 ? "+" : "") + fmtPct(p.varPct) : ""}</span></td>
+      <td class="n ${p.pnlARS < 0 ? "cv-rojo" : "cv-verde"}">${p.sinCosto ? "—" : (p.pnlARS > 0 ? "+" : "") + fmtMon(cli, p.pnlARS)}<span class="cv-sub">${p.sinCosto ? "sin costo" : (p.varPct > 0 ? "+" : "") + fmtPct(p.varPct)}</span></td>
     </tr>`).join("");
   const filaSaldo = (nombre, ars) => `<tr class="cv-saldo-fila"><td colspan="6"><b>${nombre}</b></td><td class="n ${ars < 0 ? "cv-rojo" : ""}"><b>${fmtMon(cli, ars)}</b></td><td></td></tr>`;
 
@@ -441,7 +442,7 @@ function cvPortafolio(cli) {
         <thead><tr><th>Ticker</th><th>Estado</th><th class="n">Precio actual</th><th>Clase</th><th class="n">Cantidad</th><th class="n">Costo base</th><th class="n">Valor de mercado</th><th class="n">P&amp;L no realizado</th></tr></thead>
         <tbody>${filas || `<tr><td colspan="8" class="cv-vacio">Sin posiciones.</td></tr>`}${filaSaldo("Saldo en pesos", sPesos)}${filaSaldo(sd.tieneCable ? "Saldo en dólares MEP" : "Saldo en dólares", sd.mepARS)}${sd.tieneCable ? filaSaldo("Saldo en dólares cable", sd.cableARS) : ""}</tbody>
       </table></div>
-      <p class="cv-nota">P&amp;L no realizado = precio actual contra el costo promedio. El precio de cada activo está en su moneda de cotización; los importes se muestran en la moneda elegida arriba.</p>`)}
+      <p class="cv-nota">P&amp;L no realizado = precio actual contra el costo promedio. El precio de cada activo está en su moneda de cotización; los importes se muestran en la moneda elegida arriba.${pos.some(p => p.sinCosto) ? " Las posiciones que ingresaron a la cuenta sin costo informado no entran en el rendimiento." : ""}</p>`)}
     ${cvTarjeta("Composición", `
       <div class="cv-donut-wrap">
         <div class="cv-donut" style="background:conic-gradient(${gradiente})"><div><span class="cv-sub">Total</span><b>${fmtMon(cli, total)}</b></div></div>

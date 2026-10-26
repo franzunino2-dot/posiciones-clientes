@@ -68,9 +68,13 @@ function crearPL({ historial, leerPortafolios }) {
     const mepDia = d => (d >= hoy ? tcGallo : mercado.mepEn(mep, d));
 
     // Efectivo de hoy según Gallo (cuentas corrientes).
+    // El efectivo en dólares cable (línea "USD") vale más que el MEP: se lleva a dólares MEP equivalentes con la
+    // relación de tipos de cambio de Gallo, así hoy coincide con el total que informa Gallo.
+    const tcCableGallo = num((detalle.find(x => /^usd$/i.test(x.Moneda || '') && num(x.TipoCambio) > 1) || {}).TipoCambio);
+    const ratioCable = tcCableGallo && tcGallo ? tcCableGallo / tcGallo : 1;
     let cajaArs = 0, cajaUsd = 0;
     detalle.filter(x => /Cuenta Corriente/i.test(x.Detalle || '')).forEach(x => {
-      if (/^pesos$/i.test(x.Moneda || '')) cajaArs += num(x.Importe); else cajaUsd += num(x.Cantidad);
+      if (/^pesos$/i.test(x.Moneda || '')) cajaArs += num(x.Importe); else cajaUsd += num(x.Cantidad) * (/^usd$/i.test(x.Moneda || '') ? ratioCable : 1);
     });
     // Tenencias de hoy por especie (suma de las filas con el mismo ticker).
     const hold = {};
