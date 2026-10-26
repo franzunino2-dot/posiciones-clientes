@@ -267,7 +267,23 @@ async function armarComitentes() {
 
 // ---------- Sesiones (simple, en memoria — este server solo corre local) ----------
 
-const sesiones = new Map(); // token -> { email, rol, comitenteId }
+// token -> { email, rol, comitenteId }. Se guardan en disco (mercado/sesiones.json, fuera del repo) para que un
+// reinicio del servidor no saque a nadie de la página; vencen a los 7 días.
+const SESIONES_FILE = path.join(__dirname, 'mercado', 'sesiones.json');
+const SESION_VIDA = 7 * 86400000;
+const sesiones = new Map();
+try {
+  Object.entries(JSON.parse(fs.readFileSync(SESIONES_FILE, 'utf8'))).forEach(([t, s]) => { if (Date.now() - (s._t || 0) < SESION_VIDA) sesiones.set(t, s); });
+} catch (e) { /* primera vez */ }
+let sesionesTimer = null;
+const guardarSesiones = () => {
+  clearTimeout(sesionesTimer);
+  sesionesTimer = setTimeout(() => {
+    try { fs.mkdirSync(path.dirname(SESIONES_FILE), { recursive: true }); fs.writeFileSync(SESIONES_FILE, JSON.stringify(Object.fromEntries(sesiones))); } catch (e) { /* ignorar */ }
+  }, 300);
+};
+const sesionesSet = sesiones.set.bind(sesiones);
+sesiones.set = (t, s) => { sesionesSet(t, { ...s, _t: Date.now() }); guardarSesiones(); return sesiones; };
 function nuevoToken() { return crypto.randomBytes(24).toString('hex'); }
 function requireAuth(req, res, next) {
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '') || req.query.token;

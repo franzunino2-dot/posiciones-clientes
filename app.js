@@ -3,6 +3,22 @@
 const LS_KEY = "posiciones_clientes_v1";
 const PASSWORD = "091218"; // cambiar acá si querés otra clave
 
+// Si el servidor ya no reconoce la sesión (la borró o venció), la página no se queda vacía: vuelve al login.
+(() => {
+  const original = window.fetch.bind(window);
+  window.fetch = async (...args) => {
+    const r = await original(...args);
+    try {
+      const url = String(args[0] && args[0].url || args[0]);
+      if (r.status === 401 && url.startsWith("/api/") && !url.startsWith("/api/login") && sessionStorage.getItem("sesion")) {
+        sessionStorage.removeItem("sesion");
+        location.reload();
+      }
+    } catch (e) { /* sin storage */ }
+    return r;
+  };
+})();
+
 function fmtMoney(n, decimals = 2) {
   if (n === null || n === undefined || isNaN(n)) return "-";
   return n.toLocaleString("es-AR", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
