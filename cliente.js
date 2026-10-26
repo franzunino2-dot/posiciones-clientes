@@ -535,7 +535,7 @@ function cvRendimiento(cli) {
     <p class="cv-nota">Cada fila es una venta. Apertura = fecha de la primera compra de esa posición; el costo es el promedio ponderado de lo comprado hasta la venta. Solo incluye resultados realizados (posiciones cerradas); lo no realizado está en Portafolio.${trades.length > 500 ? ` Se muestran las 500 más recientes de ${trades.length}.` : ""}</p>`
     : `<p class="cv-vacio">No hay operaciones cerradas entre ${rotulo}.</p>`);
 
-  return `${controles}<div class="cv-grid cv-grid3">${kpis}</div>${grafico}${rendHtmlFlujos(cli.id, trades, desde, hasta, "c")}${tabla}`;
+  return `${controles}<div class="cv-grid cv-grid3">${kpis}</div>${rendTarjetas(cli.id, trades, desde, hasta, "c")}${grafico}${rendHtmlFlujos(cli.id, trades, desde, hasta, "c")}${tabla}`;
 }
 
 // ---------- Actividad ----------

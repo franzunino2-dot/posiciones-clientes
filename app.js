@@ -626,7 +626,7 @@ const rendDmy = f => { if (!f) return "—"; const [y, m, d] = f.split("-"); ret
 
 // ---------- Cobros y cauciones del período (compartido por la vista del manager y la del cliente) ----------
 
-const REND_OPT = { cauc: false, sin: false }; // qué se suma al total además de las ventas y los cobros con desglose
+const REND_OPT = { sin: false }; // las rentas sin desglose de capital no suman al resultado salvo que se pida
 const RENDF = {};                             // "cuenta|desde|hasta" -> { ts, datos, error, cargando }
 
 function rendFlujos(cid, desde, hasta, alCargar) {
@@ -655,10 +655,39 @@ function rendModelo(trades, f) {
     const cobros = f ? f.cobros.filter(x => x.mon === mon && x.desglose).reduce((a, x) => a + x.renta, 0) : 0;
     const sin = f ? f.cobros.filter(x => x.mon === mon && !x.desglose).reduce((a, x) => a + x.monto, 0) : 0;
     const t = f ? f.cauciones.totales[mon] : { costo: 0, renta: 0, n: 0 };
-    const total = ventas + cobros + (REND_OPT.sin ? sin : 0) + (REND_OPT.cauc ? t.costo + t.renta : 0);
+    const total = ventas + cobros + (REND_OPT.sin ? sin : 0) + t.costo + t.renta;
     out[mon] = { ventas, cobros, sin, costo: t.costo, renta: t.renta, n: t.n, total, hay: !!(ventas || cobros || sin || t.costo || t.renta) };
   });
   return out;
+}
+
+
+// Tarjetas de arriba de Rendimiento: dividendos y rentas cobrados, costo de cauciones y resultado neto, por moneda.
+function rendTarjetas(cid, trades, desde, hasta, estilo) {
+  const m = estilo === "m";
+  const repintar = () => { if (m ? vistaActual === "rendimiento" : (clienteVista.id && clienteVista.tab === "rendimiento")) (m ? render : renderCliente)(); };
+  const est = rendFlujos(cid, desde, hasta, repintar);
+  const cargando = !est || (est.cargando && !est.datos);
+  if (cargando || !est.datos) {
+    const t = cargando ? "Cargando cobros y cauciones…" : (est.error || "No hay datos de cobros y cauciones");
+    return m ? `<div class="stats-row"><div class="stat-card"><span class="stat-label">Cobros y cauciones</span><span class="stat-sub">${t}</span></div></div>` : "";
+  }
+  const mod = rendModelo(trades, est.datos);
+  const cls = v => (v < 0 ? (m ? "neg" : "cv-rojo") : (m ? "pos" : "cv-verde"));
+  const fmt = (v, mon) => (v > 0 ? "+" : v < 0 ? "-" : "") + (mon === "USD" ? "USD " : "$ ") + fmtMoney(Math.abs(v), mon === "USD" ? 2 : 2);
+  const nCob = mon => est.datos.cobros.filter(x => x.mon === mon && x.desglose).length;
+  const card = (etq, v, mon, sub, neutro) => m
+    ? `<div class="stat-card ${!neutro && v < 0 ? "warn" : ""}"><span class="stat-label">${etq}</span><span class="stat-value ${neutro ? "" : cls(v)}">${fmt(v, mon)}</span>${sub ? `<span class="stat-sub">${sub}</span>` : ""}</div>`
+    : `<section class="cv-card cv-kpi"><span class="cv-etq">${etq}</span><div class="cv-kpi-n ${neutro ? "" : cls(v)}">${fmt(v, mon)}</div>${sub ? `<span class="cv-sub">${sub}</span>` : ""}</section>`;
+  const por = mon => {
+    const x = mod[mon], sufijo = mon === "USD" ? "(USD)" : "($)";
+    return [
+      card(`Dividendos y rentas cobrados ${sufijo}`, x.cobros, mon, `${nCob(mon)} cobros${x.sin && !REND_OPT.sin ? " · más rentas sin desglose de capital" : ""}`),
+      card(`Costo de cauciones ${sufijo}`, x.costo, mon, x.renta ? `Renta de colocadas: ${fmt(x.renta, mon)}` : (x.n ? "Cauciones tomadas del período" : "Sin cauciones en el período")),
+      card(`Resultado neto ${sufijo}`, x.total, mon, "Ventas + dividendos y rentas + cauciones"),
+    ].join("");
+  };
+  return m ? `<div class="stats-row">${por("ARS")}</div><div class="stats-row">${por("USD")}</div>` : `<div class="cv-grid cv-grid3">${por("ARS")}${por("USD")}</div>`;
 }
 
 function rendHtmlFlujos(cid, trades, desde, hasta, estilo) {
@@ -680,7 +709,6 @@ function rendHtmlFlujos(cid, trades, desde, hasta, estilo) {
 
   const opciones = `
     <div style="display:flex;gap:18px;flex-wrap:wrap;margin:4px 0 12px;font-size:13px">
-      <label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" ${REND_OPT.cauc ? "checked" : ""} onchange="rendOpt('cauc', this.checked, '${estilo}')"> Sumar el costo de las cauciones al total</label>
       ${sinHay ? `<label style="display:flex;gap:6px;align-items:center;cursor:pointer" title="Pagos de renta y amortización de títulos que ya no figuran en el cronograma: no se puede separar el interés de la devolución de capital"><input type="checkbox" ${REND_OPT.sin ? "checked" : ""} onchange="rendOpt('sin', this.checked, '${estilo}')"> Sumar rentas sin desglose de capital</label>` : ""}
     </div>`;
 
@@ -692,9 +720,9 @@ function rendHtmlFlujos(cid, trades, desde, hasta, estilo) {
         ${fila("Ganancia por ventas", "ventas")}
         ${fila("Cobros: dividendos y rentas", "cobros")}
         ${sinHay ? `<tr><td>Rentas sin desglose de capital <span class="${m ? "muted" : "cv-sub"}">${REND_OPT.sin ? "(sumadas)" : "(no sumadas)"}</span></td>${monedas.map(mon => `<td class="${m ? "" : "n "}${m ? "muted" : "cv-gris"}">${mod[mon].sin ? sg(mod[mon].sin, mon) : "—"}</td>`).join("")}</tr>` : ""}
-        <tr><td>Cauciones tomadas: costo <span class="${m ? "muted" : "cv-sub"}">${REND_OPT.cauc ? "(sumado)" : "(no sumado)"}</span></td>${monedas.map(mon => td(mod[mon].costo, mon)).join("")}</tr>
-        <tr><td>Cauciones colocadas: renta <span class="${m ? "muted" : "cv-sub"}">${REND_OPT.cauc ? "(sumada)" : "(no sumada)"}</span></td>${monedas.map(mon => td(mod[mon].renta, mon)).join("")}</tr>
-        <tr><td><b>Total del período</b></td>${monedas.map(mon => td(mod[mon].total, mon, true)).join("")}</tr>
+        <tr><td>Cauciones tomadas: costo</td>${monedas.map(mon => td(mod[mon].costo, mon)).join("")}</tr>
+        <tr><td>Cauciones colocadas: renta</td>${monedas.map(mon => td(mod[mon].renta, mon)).join("")}</tr>
+        <tr><td><b>Resultado neto del período</b></td>${monedas.map(mon => td(mod[mon].total, mon, true)).join("")}</tr>
       </tbody>
     </table></div>` : `<p class="${m ? "muted" : "cv-vacio"}">No hay ventas, cobros ni cauciones entre ${rotulo}.</p>`;
 
@@ -778,6 +806,7 @@ function renderRendimiento(cli) {
           <span class="stat-value ${realizadoHoy < 0 ? "neg" : "pos"}">$ ${fmtMoney(realizadoHoy)}</span>
         </div>
       </div>
+      ${rendTarjetas(cli.id, trades, desde, hasta, "m")}
       <p class="muted">Basado en el precio vs. precio anterior cargado para cada posición, más lo realizado hoy (ganancias/pérdidas cerradas).</p>
       ${rendHtmlFlujos(cli.id, trades, desde, hasta, "m")}
       ${tabla}
@@ -877,6 +906,7 @@ function renderRendimientoPeriodo(cli, el, tabsHtml, enRango, desde, hasta, tabl
         <span class="stat-value">${enRango.length}</span>
       </div>
     </div>
+    ${rendTarjetas(cli.id, enRango, desde, hasta, "m")}
     <div class="panel">
       <h3>Rendimiento del período ${porDia ? "· por día" : "· por mes"} (en pesos)</h3>
       ${claves.length ? `<div class="barchart">${barras}</div>` : `<p class="muted">No hay ganancias realizadas en pesos registradas en este período.</p>`}
