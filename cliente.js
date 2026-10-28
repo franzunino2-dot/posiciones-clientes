@@ -419,6 +419,8 @@ function cvPortafolio(cli) {
       <td class="n"><b>${fmtMon(cli, p.valorARS)}</b></td>
       <td class="n ${p.pnlARS < 0 ? "cv-rojo" : "cv-verde"}">${p.sinCosto ? "—" : (p.pnlARS > 0 ? "+" : "") + fmtMon(cli, p.pnlARS)}<span class="cv-sub">${p.sinCosto ? "sin costo" : (p.varPct > 0 ? "+" : "") + fmtPct(p.varPct)}</span></td>
     </tr>`).join("");
+  // Saldo en dólares: se muestra en dólares (lo que realmente es), con el equivalente en pesos al lado.
+  const filaSaldoUsd = (nombre, usd, ars) => `<tr class="cv-saldo-fila"><td colspan="7"><b>${nombre}</b></td><td class="n ${usd < 0 ? "cv-rojo" : ""}"><b>${usdTxt(usd)}</b><span class="cv-sub">≈ ${ars < 0 ? "-" : ""}$ ${fmtMoney(Math.abs(ars), 0)}</span></td><td></td></tr>`;
   const filaSaldo = (nombre, ars) => `<tr class="cv-saldo-fila"><td colspan="7"><b>${nombre}</b></td><td class="n ${ars < 0 ? "cv-rojo" : ""}"><b>${fmtMon(cli, ars)}</b></td><td></td></tr>`;
 
   return `
@@ -442,7 +444,7 @@ function cvPortafolio(cli) {
     ${cvTarjeta("Posiciones", `
       <div class="cv-tabla"><table>
         <thead><tr><th>Ticker</th><th>Estado</th><th class="n">Precio actual</th><th>Clase</th><th class="n">Cantidad</th><th class="n">Precio prom. compra</th><th class="n">Costo base</th><th class="n">Valor de mercado</th><th class="n">P&amp;L no realizado</th></tr></thead>
-        <tbody>${filas || `<tr><td colspan="9" class="cv-vacio">Sin posiciones.</td></tr>`}${filaSaldo("Saldo en pesos", sPesos)}${filaSaldo(sd.tieneCable ? "Saldo en dólares MEP" : "Saldo en dólares", sd.mepARS)}${sd.tieneCable ? filaSaldo("Saldo en dólares cable", sd.cableARS) : ""}</tbody>
+        <tbody>${filas || `<tr><td colspan="9" class="cv-vacio">Sin posiciones.</td></tr>`}${filaSaldo("Saldo en pesos", sPesos)}${filaSaldoUsd(sd.tieneCable ? "Saldo en dólares MEP" : "Saldo en dólares", sd.mep, sd.mepARS)}${sd.tieneCable ? filaSaldoUsd("Saldo en dólares cable", sd.cable, sd.cableARS) : ""}</tbody>
       </table></div>
       <p class="cv-nota">P&amp;L no realizado = precio actual contra el costo promedio. El precio promedio de compra es el costo promedio ponderado por unidad. El precio de cada activo está en su moneda de cotización; los importes se muestran en la moneda elegida arriba.${pos.some(p => p.sinCosto) ? " Las posiciones que ingresaron a la cuenta sin costo informado no entran en el rendimiento." : ""}</p>`)}
     ${cvTarjeta("Composición", `
