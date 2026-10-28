@@ -55,6 +55,7 @@ const POR_CODIGO = {
   // garantías y ajustes de derivados
   DEGI: 'Garantía', DEGO: 'Garantía', DGIP: 'Garantía', ENGI: 'Garantía', ENGO: 'Garantía', EGIP: 'Garantía', DIND: 'Ajuste',
 };
+const FONDOS = new Set(['COBR', 'COBC', 'CU$S', 'PAGO', 'PAGC', 'PAU$']); // recibos de cobro y órdenes de pago: movimientos de dinero
 const SALDOS = new Set(['S.A.', 'SALDO ANT.']); // filas de saldo anterior, no son movimientos
 const OPCIONES = new Set(['COPR', 'VTPR', 'CPTR', 'VPTR', 'EGO$', 'DGO$']);
 const FUTUROS = new Set(['CFBY', 'VFBY', 'CMIN', 'CTIN', 'VTIN', 'DEIN', 'NCIN']);
@@ -196,12 +197,16 @@ function crearHistorial({ galloPost, listarComitentes }) {
       const tipo = tipoDe(x.c, h.codigos[x.c]);
       if (tipo === 'Otro') estado.desconocidos[x.c] = (estado.desconocidos[x.c] || 0) + 1;
       if (tipo === 'Caución') return; // las cauciones diarias no se listan
-      const dinero = !x.t || /VARIAS/i.test(x.t) || /ESPECIES VARIAS/i.test(x.e);
+      // Depósitos y extracciones de plata: Gallo les pone igual un ticker (AL30, GGAL...) que es solo de referencia, así
+      // que se tratan por código como movimientos de dinero en la moneda de la cuenta, no de títulos.
+      const esFondos = FONDOS.has(x.c);
+      const dinero = esFondos || !x.t || /VARIAS/i.test(x.t) || /ESPECIES VARIAS/i.test(x.e);
       const nombre = tipo === 'Caución' ? 'Caución' : dinero ? (tipo === 'Retención' ? 'Cuenta' : tipo === 'Bonificación' ? 'Arancel' : 'Fondos') : x.t;
       salida.push({
         f: x.f, k: x.n || 0, a: nombre, m: x.m, t: tipo, n: x.i,
         ...(dinero ? {} : { d: x.e.startsWith(x.t) ? x.e.slice(x.t.length).replace(/^\s*[-–]?\s*/, '') || x.e : x.e }), c: claseDe(x.e, dinero ? '' : x.t, x.c),
-        ...(x.q ? { q: x.q } : {}), ...(x.p ? { p: x.p } : {}), ...(x.r && dinero ? { d: x.r } : {}),
+        ...(esFondos ? { d: x.r || `${tipo === 'Depósito' ? 'Ingreso' : 'Egreso'} de fondos en ${x.m === 'USD' ? 'dólares' : 'pesos'}` } : {}),
+        ...(esFondos ? {} : { ...(x.q ? { q: x.q } : {}), ...(x.p ? { p: x.p } : {}) }), ...(x.r && dinero ? { d: x.r } : {}),
       });
     });
     return salida.sort((a, b) => b.f.localeCompare(a.f) || (b.k || 0) - (a.k || 0));

@@ -5,7 +5,7 @@
 const clienteVista = { id: null, tab: "inicio", staff: false, cal: null, moneda: "ARS" };
 try { clienteVista.moneda = sessionStorage.getItem("monedaCli") || "ARS"; } catch (e) { /* sin storage */ }
 // Estado de las pantallas nuevas: filtros del calendario, modo del cashflow y filtros de Actividad.
-Object.assign(clienteVista, { calTipo: "Todos", cashModo: "grafico", cashTicker: "", dia: null, act: { q: "", tipo: "Todos", n: 25 }, rend: { periodo: "mes", desde: "", hasta: "" } });
+Object.assign(clienteVista, { calTipo: "Todos", cashModo: "grafico", cashTicker: "", dia: null, act: { q: "", tipo: "Todos", desde: "", hasta: "", n: 25 }, rend: { periodo: "mes", desde: "", hasta: "" } });
 
 let ACT = null;                   // movimientos del comitente: [{ f, a, m, t, c, q, p, n }]
 let ACT_ESTADO = "pendiente";      // pendiente | cargando | listo
@@ -203,7 +203,7 @@ function abrirVistaCliente(id, staff) {
   clienteVista.staff = !!staff;
   clienteVista.tab = "inicio";
   clienteVista.cal = null;
-  Object.assign(clienteVista, { calTipo: "Todos", cashModo: "grafico", cashTicker: "", dia: null, act: { q: "", tipo: "Todos", n: 25 }, rend: { periodo: "mes", desde: "", hasta: "" } });
+  Object.assign(clienteVista, { calTipo: "Todos", cashModo: "grafico", cashTicker: "", dia: null, act: { q: "", tipo: "Todos", desde: "", hasta: "", n: 25 }, rend: { periodo: "mes", desde: "", hasta: "" } });
   ACT = null; ACT_ESTADO = "pendiente";
   document.getElementById("app").style.display = "none";
   document.getElementById("clienteApp").style.display = "block";
@@ -541,7 +541,10 @@ function cvRendimiento(cli) {
 // ---------- Actividad ----------
 
 function cvActFiltro(k, v) {
-  clienteVista.act[k] = v; clienteVista.act.n = 25; renderCliente();
+  const a = clienteVista.act;
+  a[k] = v; a.n = 25;
+  if (a.desde && a.hasta && a.desde > a.hasta) [a.desde, a.hasta] = [a.hasta, a.desde];
+  renderCliente();
   if (k === "q") { const i = document.getElementById("cvActQ"); if (i) { i.focus(); i.setSelectionRange(v.length, v.length); } }
 }
 function cvActMas() { clienteVista.act.n += 25; renderCliente(); }
@@ -553,6 +556,8 @@ function cvActividad(cli) {
   const tipos = ["Todos", ...[...new Set(ACT.map(x => x.t))].sort()];
   let lista = ACT.slice().sort((a, b) => b.f.localeCompare(a.f) || (b.k || 0) - (a.k || 0));
   if (f.tipo !== "Todos") lista = lista.filter(x => x.t === f.tipo);
+  if (f.desde) lista = lista.filter(x => x.f >= f.desde);
+  if (f.hasta) lista = lista.filter(x => x.f <= f.hasta);
   if (f.q) { const q = f.q.toUpperCase(); lista = lista.filter(x => (x.a + " " + (x.d || "")).toUpperCase().includes(q)); }
   const clasePill = t => /^(Compra|Depósito)$/.test(t) ? "oscuro" : /^(Venta|Extracción|Retención)$/.test(t) ? "rojo" : "claro";
   const dmy = s => { const [y, m, d] = s.split("-"); return `${d}/${m}/${y.slice(2)}`; };
@@ -571,6 +576,9 @@ function cvActividad(cli) {
     <div class="cv-filtros">
       <input id="cvActQ" type="search" placeholder="Buscar activo…" value="${esc(f.q)}" oninput="cvActFiltro('q', this.value)">
       <select onchange="cvActFiltro('tipo', this.value)">${tipos.map(t => `<option ${t === f.tipo ? "selected" : ""}>${esc(t)}</option>`).join("")}</select>
+      <span class="cv-sub">Desde</span><input type="date" style="min-width:0" value="${f.desde || ""}" max="${todayStr()}" onchange="cvActFiltro('desde', this.value)">
+      <span class="cv-sub">Hasta</span><input type="date" style="min-width:0" value="${f.hasta || ""}" max="${todayStr()}" onchange="cvActFiltro('hasta', this.value)">
+      ${f.desde || f.hasta ? `<button class="cv-link" onclick="cvActFiltro('desde', ''); cvActFiltro('hasta', '')">Quitar fechas</button>` : ""}
       <span class="cv-sub">${lista.length} movimientos</span>
     </div>
     <div class="cv-tabla"><table>
