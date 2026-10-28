@@ -404,9 +404,10 @@
   .cv-brand { font-family: var(--serif); font-size: 28px; letter-spacing: -.01em; }
   .cv-brand i { color: #0ea5e9; }
   .cv-tabs { display: flex; gap: 6px; flex: 1; }
-  .cv-tabs button { padding: 8px 16px !important; border-radius: 999px !important; font-size: 14px; font-weight: 500; color: #5b6b82; }
-  .cv-tabs button:hover { background: #eef2f7; }
-  .cv-tabs button.on { background: #e0f2fe; color: #0369a1; font-weight: 600; }
+  /* Con #clienteApp para ganarle a la regla general de botones (sin esto la pestaña activa no se distinguía). */
+  #clienteApp .cv-tabs button { padding: 8px 16px !important; border-radius: 999px !important; font-size: 14px; font-weight: 500; color: #5b6b82; }
+  #clienteApp .cv-tabs button:hover { background: #eef2f7; color: #0f1b2d; }
+  #clienteApp .cv-tabs button.on { background: #e0f2fe; color: #0369a1; font-weight: 700; box-shadow: inset 0 -2px 0 #0ea5e9; }
   .cv-right { display: flex; align-items: center; gap: 14px; }
   .cv-cta { background: #eef2f7; color: #0f1b2d; border: 1px solid #d5dce8; border-radius: 999px; padding: 6px 12px; font-size: 13px; max-width: 220px; }
   .cv-mon { display: flex; background: #eef2f7; border-radius: 999px; padding: 3px; }

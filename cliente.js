@@ -259,9 +259,9 @@ function renderCliente() {
     ${!clienteVista.staff && sesion && sesion.rolReal === "alyc" ? `<div class="cv-staff">Estás viendo la plataforma como cliente: ${esc(sesion.perfilNombre || "")} · <button onclick="cambiarPerfil()">Cambiar perfil</button></div>` : ""}
     ${clienteVista.staff ? `<div class="cv-staff">Estás viendo la cuenta como la ve el cliente · <button onclick="cerrarVistaCliente()">← Volver al panel</button></div>` : ""}
     <header class="cv-head">
-      <div class="cv-brand">equanima<i>.</i></div>
+      <div class="cv-brand">Equanima<i>.</i></div>
       ${!clienteVista.staff && sesion && sesion.comitenteIds && sesion.comitenteIds.length > 1 ? `<select class="cv-cta" onchange="abrirVistaCliente(this.value, false)" aria-label="Cuenta">${sesion.comitenteIds.map(id => { const c = getClientes().find(x => x.id === id); return `<option value="${esc(id)}" ${id === clienteVista.id ? "selected" : ""}>${esc(id)}${c ? " · " + esc(titulo(c.nombre || "")) : ""}</option>`; }).join("")}</select>` : ""}
-      <nav class="cv-tabs">${tabs.map(([k, n]) => `<button class="${clienteVista.tab === k ? "on" : ""}" onclick="cvTab('${k}')">${n}</button>`).join("")}</nav>
+      <nav class="cv-tabs">${tabs.map(([k, n]) => `<button class="${clienteVista.tab === k ? "on" : ""}" ${clienteVista.tab === k ? "aria-current=\"page\"" : ""} onclick="cvTab('${k}')">${n}</button>`).join("")}</nav>
       <div class="cv-right">
         <div class="cv-mon">${monedas.map(([k, n]) => `<button class="${mon === k ? "on" : ""}" ${tasas[k] ? "" : "disabled"} onclick="cvMoneda('${k}')">${n}</button>`).join("")}</div>
         <span class="cv-vivo vivo-estado">${esc(VIVO.texto)}</span><button class="cv-act" onclick="actualizarCuentaEnVivo(clienteVista.id, true)" title="Actualizar ahora" aria-label="Actualizar ahora">↻</button>
