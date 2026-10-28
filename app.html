@@ -201,6 +201,8 @@
   .sidebar .brand { padding: 0 20px 18px; }
   .sidebar .brand b { font-family: var(--serif); font-weight: 400; font-size: 32px; display: block; letter-spacing: -.01em; }
   .sidebar .brand b i { color: var(--accent); }
+  /* El logo es azul oscuro sobre blanco: sobre el fondo oscuro se invierte y el blanco se funde con el fondo. */
+  .sidebar .brand img { display: block; height: 36px; width: auto; margin-bottom: 6px; filter: invert(1) hue-rotate(180deg); mix-blend-mode: lighten; }
   .sidebar .brand span { color: var(--muted); font-size: 12px; }
   .sidebar nav { display: flex; flex-direction: column; gap: 4px; flex: 1; padding: 0 10px; overflow-y: auto; }
   .navbtn {
@@ -401,8 +403,8 @@
   .cv-staff { background: #0f2a45; color: #cfe8f8; font-size: 13px; padding: 8px 20px; text-align: center; }
   .cv-staff button { color: #7dd3fc !important; font-weight: 600; margin-left: 8px; }
   .cv-head { display: flex; align-items: center; gap: 28px; padding: 14px 28px; background: #fff; border-bottom: 1px solid #e5e9f0; flex-wrap: wrap; position: sticky; top: 0; z-index: 5; }
-  .cv-brand { font-family: var(--serif); font-size: 28px; letter-spacing: -.01em; }
-  .cv-brand i { color: #0ea5e9; }
+  .cv-brand { display: block; flex-shrink: 0; }
+  .cv-brand img { display: block; height: 34px; width: auto; }
   .cv-tabs { display: flex; gap: 6px; flex: 1; }
   /* Con #clienteApp para ganarle a la regla general de botones (sin esto la pestaña activa no se distinguía). */
   #clienteApp .cv-tabs button { padding: 8px 16px !important; border-radius: 999px !important; font-size: 14px; font-weight: 500; color: #5b6b82; }
@@ -594,7 +596,7 @@
 
 <div id="app">
   <aside class="sidebar">
-    <div class="brand"><b>equanima<i>.</i></b><span>Tu cartera, en un solo lugar</span></div>
+    <div class="brand"><img src="logo-equanima.png" alt="Equanima Securities"><span>Tu cartera, en un solo lugar</span></div>
     <nav>
       <button class="navbtn" data-view="alyc" data-alyc-only="1"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Panel ALyC</button>
       <button class="navbtn" data-view="inicio" data-no-alyc="1"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>Resumen de clientes</button>

@@ -28,9 +28,23 @@ const https = require('https');
 const app = express();
 const PORT = Number(process.env.PORT || 5501);
 app.use(express.json());
-// Archivos con datos de comitentes: solo por la API (con sesión), nunca como archivo estático.
-app.use((req, res, next) => /^\/(ganancias|actividad|pagos-cache)\.json$|^\/historial(\/|$)/i.test(req.path) ? res.status(404).end() : next());
-app.use(express.static(__dirname));
+// Archivos estáticos: SOLO lo que la página necesita. Todo lo demás de la carpeta (datos de comitentes, sesiones y
+// archivos de trabajo en mercado/ e historial/, código del servidor, logs, scripts de arranque, .env, .git) no se
+// sirve nunca: los datos van por la API, con sesión. Se decide por lista de permitidos y no de prohibidos porque
+// Windows acepta variantes del nombre (mayúsculas, nombres cortos, puntos al final) que una lista negra no cubre.
+const JS_PUBLICOS = new Set(['app', 'alyc', 'perfil', 'manager', 'resultado', 'mercado-ui', 'mapa-ui', 'fondos-ui', 'calendario-ui', 'cliente', 'data', 'importar', 'logo-eq']);
+const EXT_PUBLICAS = new Set(['.html', '.css', '.png', '.jpg', '.jpeg', '.svg', '.ico', '.webp', '.woff', '.woff2']);
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/')) return next();
+  let ruta;
+  try { ruta = decodeURIComponent(req.path); } catch (e) { return res.status(400).end(); }
+  if (ruta === '/' || ruta.includes('..') || ruta.includes('\\') || ruta.includes(':')) return ruta === '/' ? next() : res.status(404).end();
+  const m = ruta.toLowerCase().match(/^\/(?:vendor\/)?([^/]+?)(\.[a-z0-9]+)$/);
+  const ok = m && ((ruta.toLowerCase().startsWith('/vendor/') && m[2] === '.js')
+    || (!ruta.slice(1).includes('/') && (EXT_PUBLICAS.has(m[2]) || (m[2] === '.js' && JS_PUBLICOS.has(m[1])) || ruta.toLowerCase() === '/pagos.json')));
+  return ok ? next() : res.status(404).end();
+});
+app.use(express.static(__dirname, { dotfiles: 'deny' }));
 
 // ---------- Conexión a Gallo (EGWS) ----------
 
