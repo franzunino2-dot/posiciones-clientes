@@ -414,11 +414,12 @@ function cvPortafolio(cli) {
       <td class="n">${p.mon === "USD" ? "USD " : "$ "}${fmtMoney(p.p, 2)}</td>
       <td>${esc(p.clase)}</td>
       <td class="n">${fmtMoney(p.c, 0)}</td>
+      <td class="n">${p.sinCosto ? "—" : (p.mon === "USD" ? "USD " : "$ ") + fmtMoney(p.co, 2)}</td>
       <td class="n">${p.sinCosto ? "—" : fmtMon(cli, p.costoARS)}</td>
       <td class="n"><b>${fmtMon(cli, p.valorARS)}</b></td>
       <td class="n ${p.pnlARS < 0 ? "cv-rojo" : "cv-verde"}">${p.sinCosto ? "—" : (p.pnlARS > 0 ? "+" : "") + fmtMon(cli, p.pnlARS)}<span class="cv-sub">${p.sinCosto ? "sin costo" : (p.varPct > 0 ? "+" : "") + fmtPct(p.varPct)}</span></td>
     </tr>`).join("");
-  const filaSaldo = (nombre, ars) => `<tr class="cv-saldo-fila"><td colspan="6"><b>${nombre}</b></td><td class="n ${ars < 0 ? "cv-rojo" : ""}"><b>${fmtMon(cli, ars)}</b></td><td></td></tr>`;
+  const filaSaldo = (nombre, ars) => `<tr class="cv-saldo-fila"><td colspan="7"><b>${nombre}</b></td><td class="n ${ars < 0 ? "cv-rojo" : ""}"><b>${fmtMon(cli, ars)}</b></td><td></td></tr>`;
 
   return `
     <div class="cv-grid cv-grid3">
@@ -440,10 +441,10 @@ function cvPortafolio(cli) {
     </div>
     ${cvTarjeta("Posiciones", `
       <div class="cv-tabla"><table>
-        <thead><tr><th>Ticker</th><th>Estado</th><th class="n">Precio actual</th><th>Clase</th><th class="n">Cantidad</th><th class="n">Costo base</th><th class="n">Valor de mercado</th><th class="n">P&amp;L no realizado</th></tr></thead>
-        <tbody>${filas || `<tr><td colspan="8" class="cv-vacio">Sin posiciones.</td></tr>`}${filaSaldo("Saldo en pesos", sPesos)}${filaSaldo(sd.tieneCable ? "Saldo en dólares MEP" : "Saldo en dólares", sd.mepARS)}${sd.tieneCable ? filaSaldo("Saldo en dólares cable", sd.cableARS) : ""}</tbody>
+        <thead><tr><th>Ticker</th><th>Estado</th><th class="n">Precio actual</th><th>Clase</th><th class="n">Cantidad</th><th class="n">Precio prom. compra</th><th class="n">Costo base</th><th class="n">Valor de mercado</th><th class="n">P&amp;L no realizado</th></tr></thead>
+        <tbody>${filas || `<tr><td colspan="9" class="cv-vacio">Sin posiciones.</td></tr>`}${filaSaldo("Saldo en pesos", sPesos)}${filaSaldo(sd.tieneCable ? "Saldo en dólares MEP" : "Saldo en dólares", sd.mepARS)}${sd.tieneCable ? filaSaldo("Saldo en dólares cable", sd.cableARS) : ""}</tbody>
       </table></div>
-      <p class="cv-nota">P&amp;L no realizado = precio actual contra el costo promedio. El precio de cada activo está en su moneda de cotización; los importes se muestran en la moneda elegida arriba.${pos.some(p => p.sinCosto) ? " Las posiciones que ingresaron a la cuenta sin costo informado no entran en el rendimiento." : ""}</p>`)}
+      <p class="cv-nota">P&amp;L no realizado = precio actual contra el costo promedio. El precio promedio de compra es el costo promedio ponderado por unidad. El precio de cada activo está en su moneda de cotización; los importes se muestran en la moneda elegida arriba.${pos.some(p => p.sinCosto) ? " Las posiciones que ingresaron a la cuenta sin costo informado no entran en el rendimiento." : ""}</p>`)}
     ${cvTarjeta("Composición", `
       <div class="cv-donut-wrap">
         <div class="cv-donut" style="background:conic-gradient(${gradiente})"><div><span class="cv-sub">Total</span><b>${fmtMon(cli, total)}</b></div></div>
