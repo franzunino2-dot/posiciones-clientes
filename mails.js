@@ -8,6 +8,7 @@
 //   MAIL_FROM            remitente, ej. Equanima Securities <info@equanimasecurities.com>
 //   MAIL_REPLY_TO        opcional, a dónde llegan las respuestas
 //   ANTHROPIC_API_KEY    para redactar con IA (opcional: sin clave se escribe a mano)
+//   ANTHROPIC_WORKSPACE_ID  solo si la clave es de usuario (sk-ant-usr-...): el ID del espacio de trabajo (wrkspc_...)
 //   MAIL_ENVIO_MASIVO=1  habilita el envío a varios destinatarios (apagado por defecto)
 //   MAIL_LOTE (20) y MAIL_PAUSA_MS (4000)   cuántos mails por tanda y la pausa entre tandas
 
@@ -30,6 +31,7 @@ const cfg = () => ({
   from: (process.env.MAIL_FROM || '').trim(),
   replyTo: (process.env.MAIL_REPLY_TO || '').trim(),
   ia: (process.env.ANTHROPIC_API_KEY || '').trim(),
+  iaEspacio: (process.env.ANTHROPIC_WORKSPACE_ID || '').trim(), // solo para claves de usuario (sk-ant-usr-), que no están atadas a un espacio de trabajo
   masivo: ['1', 'true', 'si'].includes(String(process.env.MAIL_ENVIO_MASIVO || '').toLowerCase()),
   lote: Math.max(1, Number(process.env.MAIL_LOTE || 20)),
   pausa: Math.max(0, Number(process.env.MAIL_PAUSA_MS || 4000)),
@@ -149,7 +151,7 @@ Respondé SOLO con JSON válido: {"asunto": "...", "cuerpo": "párrafos separado
       const r = await axios.post('https://api.anthropic.com/v1/messages', {
         model: MODELO_IA, max_tokens: 1200, system: sistema,
         messages: [{ role: 'user', content: borrador ? `Mejorá este borrador según la indicación.\n\nIndicación: ${instruccion}\n\nBorrador:\n${borrador}` : `Redactá el mail. Lo que hay que comunicar: ${instruccion}` }],
-      }, { headers: { 'x-api-key': c.ia, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' }, timeout: 60000 });
+      }, { headers: { 'x-api-key': c.ia, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', ...(c.iaEspacio ? { 'anthropic-workspace-id': c.iaEspacio } : {}) }, timeout: 60000 });
       const texto = ((r.data && r.data.content) || []).map(b => b.text || '').join('').trim();
       const json = JSON.parse(texto.slice(texto.indexOf('{'), texto.lastIndexOf('}') + 1));
       if (!json.asunto || !json.cuerpo) throw new Error('La IA no devolvió asunto y cuerpo');
