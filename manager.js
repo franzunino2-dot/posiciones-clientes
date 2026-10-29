@@ -165,12 +165,13 @@ function inicioTicker(t) {
 function tablaTenencias(f) {
   const tot = f.pos.reduce((s, p) => s + p.ars, 0) || 1;
   return `<div class="table-wrap"><table>
-    <thead><tr><th>Activo</th><th>Cantidad</th><th>Precio</th><th>Valor</th><th>% de tenencias</th><th>Resultado</th></tr></thead>
+    <thead><tr><th>Activo</th><th>Cantidad</th><th>Precio</th><th>Precio de compra</th><th>Valor</th><th>% de tenencias</th><th>Resultado</th></tr></thead>
     <tbody>${f.pos.map(p => `<tr class="clic" onclick="inicioTicker('${esc(p.t)}')">
       <td><b>${esc(p.t)}</b><br><span class="muted" style="font-size:11px">${esc(titulo(p.n))}</span></td>
       <td>${fmtMoney(p.c, 0)}</td><td>${p.mon === "USD" ? "USD " : "$ "}${fmtMoney(p.p, 2)}</td>
+      <td>${p.co > 0 ? (p.mon === "USD" ? "USD " : "$ ") + fmtMoney(p.co, 2) : `<span class="muted" title="Ingresó a la cuenta sin costo informado">sin costo</span>`}</td>
       <td><b>${fmtInicio(convInicio(f.c, p.ars))}</b></td><td>${fmtPct(p.ars / tot * 100)}</td>
-      <td class="${p.co ? claseRes(p.varPct) : ""}">${p.co ? (p.varPct > 0 ? "+" : "") + fmtPct(p.varPct) : "—"}</td></tr>`).join("") || `<tr><td colspan="6" class="muted">Sin posiciones abiertas.</td></tr>`}</tbody>
+      <td class="${p.co ? claseRes(p.varPct) : ""}">${p.co ? (p.varPct > 0 ? "+" : "") + fmtPct(p.varPct) : "—"}</td></tr>`).join("") || `<tr><td colspan="7" class="muted">Sin posiciones abiertas.</td></tr>`}</tbody>
   </table></div>`;
 }
 
