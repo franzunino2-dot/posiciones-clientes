@@ -211,6 +211,7 @@ function tcDolaresGlobal(portafolio) {
 }
 
 function armarCliente(cod, cli, mgrMap, portafolio, tcGlobal = {}) {
+  const costosCuenta = historial.costosDe(cod) || {};
   const p = portafolio[cod] || { activos: [], resumen: {} };
   const detalle = p.resumen?.Detalle || [];
   const buscar = (moneda, detalleTxt) => detalle.find(d => d.Moneda === moneda && (d.Detalle || '').includes(detalleTxt));
@@ -233,7 +234,15 @@ function armarCliente(cod, cli, mgrMap, portafolio, tcGlobal = {}) {
     // 0,01 = bonos/ONs/letras (precio cada 100 VN); 0,001 = fondos comunes (precio cada 1.000 cuotapartes); 1 = el resto.
     const razon = bruto ? a.importe / bruto : 1;
     const factorUnidad = Math.abs(razon - 0.01) < 0.001 ? 0.01 : Math.abs(razon - 0.001) < 0.0001 ? 0.001 : 1;
-    return { t: a.ticker, n: a.especie, c: a.cantidad, p: a.precio, co: a.costo, pa: a.precio, factorUnidad };
+    // Gallo tarda en informar el costo de una compra reciente (o no lo informa si la posición ingresó sin costo): si
+    // es cero o negativo se usa el promedio de las compras del historial, siempre que la cantidad coincida con la de hoy.
+    let co = a.costo, costoDeCompras = false;
+    if (!(co > 0)) {
+      const c = costosCuenta[a.ticker], usd = /usd/i.test(a.tipoActivo || '');
+      const m = c && (usd ? c.USD : c.ARS);
+      if (m && Math.abs(m.q - a.cantidad) <= Math.max(1, Math.abs(a.cantidad) * 0.005)) { co = m.u / factorUnidad; costoDeCompras = true; }
+    }
+    return { t: a.ticker, n: a.especie, c: a.cantidad, p: a.precio, co, pa: a.precio, factorUnidad, ...(costoDeCompras ? { costoDeCompras: true, costoMoneda: /usd/i.test(a.tipoActivo || '') ? 'USD' : 'ARS' } : {}) };
   };
   const activos = p.activos || [];
   const detallePesos = activos.filter(a => !/usd/i.test(a.tipoActivo || '') && a.ticker).map(conFactor);
@@ -246,7 +255,7 @@ function armarCliente(cod, cli, mgrMap, portafolio, tcGlobal = {}) {
     const d = conFactor(a);
     d.cable = esCable(a);
     d.tcPos = (d.cable ? tcCable : tcMep) || tc;
-    if (d.tcPos > 0) { d.p = a.precio / d.tcPos; d.co = a.costo / d.tcPos; d.pa = d.p; }
+    if (d.tcPos > 0) { d.p = a.precio / d.tcPos; if (!d.costoDeCompras) d.co = a.costo / d.tcPos; d.pa = d.p; }
     return d;
   });
   const valorDolaresARS = activos.filter(esUsd).reduce((acc, a) => acc + num(a.importe), 0);

@@ -12,7 +12,7 @@ const vm = require('vm');
 const DIR = path.join(__dirname, 'historial');
 const INDICE = path.join(DIR, '_ganancias.json'); // { id: { actualizado, ganancias } } para no leer 800 archivos por pedido
 const DESDE = '01/01/2020';
-const FORMATO = 2;                                // se sube cuando cambia lo que guarda cada ganancia (se rearma desde lo ya bajado, sin ir a Gallo)
+const FORMATO = 3;                                // se sube cuando cambia lo que guarda cada ganancia (se rearma desde lo ya bajado, sin ir a Gallo)
 const VERSION = 3;                              // se sube cuando cambia cómo se arma el historial: fuerza a bajar todo de nuevo
 const VIGENCIA_MS = 20 * 3600 * 1000;             // se vuelve a bajar una cuenta si tiene más de 20 horas
 
@@ -232,7 +232,7 @@ function crearHistorial({ galloPost, listarComitentes }) {
     try { await actualizarHoy(id); } catch (e) { /* sin operaciones del día: queda lo de la cuenta corriente */ }
     const g = aGanancias(conHoy(id, h));
     fs.writeFileSync(archivo(id), JSON.stringify(h));
-    indice[String(id)] = { v: VERSION, fmt: FORMATO, actualizado: h.actualizado, ganancias: g.ganancias, operaciones: g.operaciones };
+    indice[String(id)] = { v: VERSION, fmt: FORMATO, actualizado: h.actualizado, ganancias: g.ganancias, costos: g.costos, operaciones: g.operaciones };
     if (++sucio >= 25) guardarIndice();
     const suma = mon => Math.round(g.ganancias.filter(x => x.moneda === mon).reduce((a, x) => a + x.ventaRescate - x.costo, 0));
     return { id: String(id), pesos: h.pesos.length, usd: h.usd.length, ganancias: g.ganancias.length, realizadoARS: suma('ARS'), realizadoUSD: suma('USD'), primera: g.ganancias.map(x => x.fecha).sort()[0] || null, sucios: g.sucios, mixtos: g.mixtos.length, ignorados: g.ignorados };
@@ -272,6 +272,7 @@ function crearHistorial({ galloPost, listarComitentes }) {
     actualizar,
     refrescarTodas,
     gananciasDe: id => indice[String(id)] || null,
+    costosDe: id => (indice[String(id)] || {}).costos || null,
     ids: () => Object.keys(indice),
     // Los movimientos se arman al pedirlos desde lo guardado: así un cambio de clasificación no obliga a volver a bajar todo.
     movimientosDe: id => { try { return aMovimientos(conHoy(id, JSON.parse(fs.readFileSync(archivo(id), 'utf8')))); } catch (e) { return null; } },
@@ -284,7 +285,7 @@ function crearHistorial({ galloPost, listarComitentes }) {
       Object.keys(indice).filter(id => indice[id].fmt !== FORMATO).forEach(id => {
         try {
           const h = JSON.parse(fs.readFileSync(archivo(id), 'utf8')), g = aGanancias(h);
-          indice[id] = { ...indice[id], fmt: FORMATO, ganancias: g.ganancias, operaciones: g.operaciones }; rearmadas++;
+          indice[id] = { ...indice[id], fmt: FORMATO, ganancias: g.ganancias, costos: g.costos, operaciones: g.operaciones }; rearmadas++;
         } catch (e) { /* queda como estaba y se rearma en la próxima bajada */ }
       });
       if (rearmadas) guardarIndice();

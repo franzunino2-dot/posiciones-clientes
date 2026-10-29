@@ -115,12 +115,17 @@ function reconstruirActivity(filas) {
     if (deOtra > 1e-6) { const po = p[otra]; const a2 = po.q ? po.c / po.q : 0; po.c -= a2 * deOtra; po.q -= deOtra; }
   });
 
-  const posiciones = {};
-  Object.entries(pools).forEach(([t, p]) => { const q = p.ARS.q + p.USD.q; if (q > 1e-6) posiciones[t] = q; });
+  const posiciones = {}, costos = {};
+  Object.entries(pools).forEach(([t, p]) => {
+    const q = p.ARS.q + p.USD.q;
+    if (q > 1e-6) posiciones[t] = q;
+    // Costo promedio por unidad de lo que sigue en cartera, por moneda en la que se compró (importe neto / cantidad).
+    ['ARS', 'USD'].forEach(m => { if (p[m].q > 1e-6 && p[m].c > 0) (costos[t] = costos[t] || {})[m] = { q: p[m].q, u: p[m].c / p[m].q }; });
+  });
   return {
     ganancias: ganancias.filter(g => !sucios[g.ticker]),
     descartadasPorSucio: ganancias.filter(g => sucios[g.ticker]).length,
-    sucios, mixtos, ignorados, posiciones, operaciones: ops.length,
+    sucios, mixtos, ignorados, posiciones, costos, operaciones: ops.length,
   };
 }
 
