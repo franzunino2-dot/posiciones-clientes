@@ -621,6 +621,11 @@
   .ml-fila .mk-nota { margin-left: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ml-x { margin-left: auto; background: none; border: none; color: var(--text-dim, #93a3b0); font-size: 16px; line-height: 1; cursor: pointer; padding: 0 4px; }
   .ml-x:hover { color: var(--neg, #e5484d); }
+  .ml-adj { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 12px 0 4px; }
+  .ml-adj-btn { display: inline-block; padding: 8px 14px; border: 1px solid var(--border); border-radius: var(--r); background: var(--bg-card2); color: var(--text); font-size: 13px; cursor: pointer; }
+  .ml-adj-btn:hover { border-color: var(--accent); }
+  .ml-adj-btn input { display: none; }
+  .ml-adj-it { display: inline-flex; align-items: center; gap: 6px; padding: 5px 8px 5px 12px; border: 1px solid var(--border); border-radius: 999px; font-size: 13px; }
   .ml-confirma { border: 1px solid var(--accent); border-radius: var(--r); padding: 14px; background: #0e385244; }
   button:disabled { opacity: .4; cursor: not-allowed; }
   /* Controles nativos (barras de desplazamiento, calendarios de fecha) acordes a cada tema. */

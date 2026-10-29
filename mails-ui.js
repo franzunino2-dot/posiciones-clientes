@@ -3,7 +3,7 @@
 const ML = {
   estado: null, dest: null, managers: [], grupos: [],
   sel: new Set(), indiv: new Set(), gsel: new Set(), busca: "", res: [], gnombre: "",
-  asunto: "", titulo: "", segmento: "", cuerpo: "", botonTexto: "", botonUrl: "", instr: "",
+  asunto: "", titulo: "", segmento: "", cuerpo: "", botonTexto: "", botonUrl: "", instr: "", adj: [],
   redactando: false, msg: "", msgOk: true, prueba: "", envios: [], confirmando: false, vistaTimer: null, pollTimer: null,
 };
 const ML_SEGMENTOS = ["Empresas", "Financiamiento PyME", "Banca Privada", "Institucionales"];
@@ -18,6 +18,9 @@ async function mlApi(ruta, cuerpo, metodo) {
 
 // Los campos del mail tal como los espera el servidor.
 const mlMail = () => ({ asunto: ML.asunto, titulo: ML.titulo, segmento: ML.segmento, cuerpo: ML.cuerpo, botonTexto: ML.botonTexto, botonUrl: ML.botonUrl });
+const ML_ADJ_MAX = 3, ML_ADJ_BYTES = 5 * 1024 * 1024, ML_ADJ_EXT = ["pdf", "png", "jpg", "jpeg", "csv", "xlsx", "xls", "docx", "doc"];
+const mlTam = n => n >= 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB";
+const mlAdjuntos = () => ML.adj.map(a => ({ nombre: a.nombre, datos: a.datos }));
 const mlHayFiltro = () => ML.sel.size || ML.indiv.size || ML.gsel.size;
 const mlMailsDeGrupos = () => { const s = new Set(); ML.grupos.filter(g => ML.gsel.has(g.id)).forEach(g => g.emails.forEach(e => s.add(e))); return s; };
 
@@ -101,6 +104,11 @@ function mlPintar() {
             <input id="mlBotonTexto" type="text" placeholder="Botón (opcional): texto, ej. Coordinar una reunión" maxlength="60" value="${mlEsc(ML.botonTexto)}" oninput="ML.botonTexto=this.value; mlVista()">
             <input id="mlBotonUrl" type="text" placeholder="Link del botón (vacío: mail de Equanima)" value="${mlEsc(ML.botonUrl)}" oninput="ML.botonUrl=this.value; mlVista()">
           </div>
+          <div class="ml-adj">
+            <label class="ml-adj-btn">Adjuntar archivos<input type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.csv,.xlsx,.xls,.docx,.doc" onchange="mlAdjuntar(this.files)" ${ML.adj.length >= ML_ADJ_MAX ? "disabled" : ""}></label>
+            <span class="mk-nota">Hasta ${ML_ADJ_MAX} archivos y 5 MB en total (PDF, imágenes, Excel, Word, CSV). Cada cliente recibe su copia.</span>
+            ${ML.adj.map((a, i) => `<span class="ml-adj-it">${mlEsc(a.nombre)} <span class="mk-nota">${mlTam(a.tam)}</span><button class="ml-x" title="Quitar" onclick="mlQuitarAdjunto(${i})">×</button></span>`).join("")}
+          </div>
           <p class="mk-nota">Se agrega solo: saludo ("Hola, Nombre:" cuando se conoce el nombre), firma, pie legal de Equanima Securities y la opción de baja.</p>
         </section>
         <section class="mk-card">
@@ -130,7 +138,7 @@ function mlPintar() {
           <p class="mk-nota" style="margin:0 0 14px">La prueba sale solo a esa dirección, marcada [PRUEBA].</p>
           ${ML.confirmando ? `
             <div class="ml-confirma">
-              <p style="margin:0 0 8px;font-size:14px">Vas a enviar <b>"${mlEsc(ML.asunto)}"</b> a <b>${lista.length}</b> mails distintos. No se puede deshacer. Escribí la cantidad para confirmar:</p>
+              <p style="margin:0 0 8px;font-size:14px">Vas a enviar <b>"${mlEsc(ML.asunto)}"</b>${ML.adj.length ? ` con ${ML.adj.length} adjunto${ML.adj.length > 1 ? "s" : ""}` : ""} a <b>${lista.length}</b> mails distintos. No se puede deshacer. Escribí la cantidad para confirmar:</p>
               <div class="mk-pills" style="margin:0">
                 <input id="mlConfirmar" type="text" inputmode="numeric" placeholder="${lista.length}" style="width:110px">
                 <button class="on" onclick="mlEnviar()">Confirmar y enviar</button>
@@ -160,6 +168,22 @@ function mlVista(ya) {
     } catch (e) { /* sin vista */ }
   }, ya ? 0 : 450);
 }
+
+// Lee los archivos elegidos y los guarda en base64; se mandan con la prueba y con el envío.
+async function mlAdjuntar(files) {
+  const leer = f => new Promise((ok, mal) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(",")[1] || ""); r.onerror = () => mal(new Error("No se pudo leer " + f.name)); r.readAsDataURL(f); });
+  ML.msg = "";
+  for (const f of files) {
+    const ext = (f.name.split(".").pop() || "").toLowerCase();
+    const total = ML.adj.reduce((s, a) => s + a.tam, 0) + f.size;
+    if (ML.adj.length >= ML_ADJ_MAX) { ML.msg = "Ya hay " + ML_ADJ_MAX + " archivos adjuntos."; ML.msgOk = false; break; }
+    if (!ML_ADJ_EXT.includes(ext)) { ML.msg = `"${f.name}" no se puede adjuntar (tipos: ${ML_ADJ_EXT.join(", ")}).`; ML.msgOk = false; continue; }
+    if (total > ML_ADJ_BYTES) { ML.msg = `Con "${f.name}" los adjuntos pasan los 5 MB.`; ML.msgOk = false; continue; }
+    try { ML.adj.push({ nombre: f.name, tam: f.size, datos: await leer(f) }); } catch (e) { ML.msg = e.message; ML.msgOk = false; }
+  }
+  mlPintar();
+}
+function mlQuitarAdjunto(i) { ML.adj.splice(i, 1); mlPintar(); }
 
 function mlTodos() { ML.sel.clear(); ML.indiv.clear(); ML.gsel.clear(); mlPintar(); }
 function mlManager(cod, on) { if (on) ML.sel.add(cod); else ML.sel.delete(cod); mlPintar(); }
@@ -206,7 +230,7 @@ async function mlRedactar() {
 async function mlProbar() {
   ML.msg = ""; ML.msgOk = true;
   try {
-    const j = await mlApi("prueba", { ...mlMail(), a: ML.prueba });
+    const j = await mlApi("prueba", { ...mlMail(), adjuntos: mlAdjuntos(), a: ML.prueba });
     ML.msg = j.ok ? `Prueba enviada a ${j.enviado}. Revisá la bandeja de entrada (y el spam).` : j.error; ML.msgOk = !!j.ok;
   } catch (e) { ML.msg = "No se pudo enviar la prueba: " + e.message; ML.msgOk = false; }
   mlPintar();
@@ -223,7 +247,7 @@ async function mlEnviar() {
   const n = (document.getElementById("mlConfirmar") || {}).value;
   try {
     // Se manda la lista ya resuelta (managers, grupos y elegidos a mano), el servidor la vuelve a filtrar por bajas y validez.
-    const j = await mlApi("enviar", { ...mlMail(), emails: mlHayFiltro() ? mlLista().map(d => d.email) : undefined, confirmar: Number(n) });
+    const j = await mlApi("enviar", { ...mlMail(), adjuntos: mlAdjuntos(), emails: mlHayFiltro() ? mlLista().map(d => d.email) : undefined, confirmar: Number(n) });
     if (j.ok) { ML.msg = `Envío iniciado a ${j.total} mails. Sale por tandas: podés seguir el avance abajo.`; ML.msgOk = true; ML.confirmando = false; mlEnvios(); }
     else { ML.msg = j.error; ML.msgOk = false; }
   } catch (e) { ML.msg = "No se pudo iniciar el envío: " + e.message; ML.msgOk = false; }

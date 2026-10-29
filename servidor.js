@@ -27,7 +27,8 @@ const https = require('https');
 
 const app = express();
 const PORT = Number(process.env.PORT || 5501);
-app.use(express.json());
+// Los mails llevan adjuntos en base64: esas rutas tienen su propio parser con más límite (ver mails.js).
+app.use((req, res, next) => (req.path.startsWith('/api/mails/') ? next() : express.json()(req, res, next)));
 // Archivos estáticos: SOLO lo que la página necesita. Todo lo demás de la carpeta (datos de comitentes, sesiones y
 // archivos de trabajo en mercado/ e historial/, código del servidor, logs, scripts de arranque, .env, .git) no se
 // sirve nunca: los datos van por la API, con sesión. Se decide por lista de permitidos y no de prohibidos porque

@@ -15,6 +15,7 @@
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
+const express = require('express');
 const nodemailer = require('nodemailer');
 
 const DIR = path.join(__dirname, 'mercado');
@@ -27,6 +28,9 @@ const IMAGENES = {
   'delta-blanco': path.join(__dirname, 'mail-delta-blanco.png'),
   'delta': path.join(__dirname, 'mail-delta.png'),
 };
+// Adjuntos: los elige quien redacta y salen en todos los mails del envío. Tope bajo a propósito: cada destinatario recibe su copia.
+const ADJ_MAX = 3, ADJ_BYTES = 5 * 1024 * 1024;
+const ADJ_TIPOS = { pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', csv: 'text/csv', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', xls: 'application/vnd.ms-excel', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', doc: 'application/msword' };
 const MAIL_INFO = 'info@equanimasecurities.com';
 const MODELO_IA = process.env.MAIL_MODELO_IA || 'claude-sonnet-5-5';
 
@@ -91,6 +95,23 @@ function bloquesCuerpo(cuerpo) {
   }).join('');
 }
 
+// Valida y decodifica los adjuntos que llegan del panel ([{nombre, datos en base64}]). Devuelve { files } o { error }.
+function prepararAdjuntos(lista) {
+  if (!Array.isArray(lista) || !lista.length) return { files: [] };
+  if (lista.length > ADJ_MAX) return { error: `Se pueden adjuntar hasta ${ADJ_MAX} archivos.` };
+  let total = 0; const files = [];
+  for (const a of lista) {
+    const nombre = String((a && a.nombre) || '').replace(/[\\/:*?"<>|\r\n]+/g, '_').trim().slice(0, 90);
+    const ext = (nombre.split('.').pop() || '').toLowerCase();
+    if (!nombre || !ADJ_TIPOS[ext]) return { error: `El archivo "${nombre || '?'}" no se puede adjuntar. Tipos permitidos: ${Object.keys(ADJ_TIPOS).join(', ')}.` };
+    const buf = Buffer.from(String((a && a.datos) || ''), 'base64');
+    if (!buf.length) return { error: `El archivo "${nombre}" está vacío.` };
+    total += buf.length; files.push({ filename: nombre, content: buf, contentType: ADJ_TIPOS[ext] });
+  }
+  if (total > ADJ_BYTES) return { error: `Los adjuntos pesan ${(total / 1048576).toFixed(1)} MB y el máximo es ${ADJ_BYTES / 1048576} MB en total.` };
+  return { files };
+}
+
 // img(cid) arma la etiqueta de imagen: en el mail real apunta al adjunto en línea (cid:), en la vista previa a un data URI.
 function htmlMail({ titulo, segmento, cuerpo, saludo, botonTexto, botonUrl }, img = cid => `cid:${cid}`) {
   const boton = limpiaLinea(botonTexto).slice(0, 60);
@@ -144,9 +165,9 @@ const campos = b => ({
 function transporte(c) {
   return nodemailer.createTransport({ host: c.host, port: c.port, secure: c.port === 465, auth: { user: c.user, pass: c.pass }, connectionTimeout: 15000, greetingTimeout: 15000, socketTimeout: 30000 });
 }
-async function enviarUno(tr, c, { a, mail, nombre, prefijoAsunto = '' }) {
+async function enviarUno(tr, c, { a, mail, nombre, prefijoAsunto = '', adjuntos: extra = [] }) {
   const m = campos(mail), saludo = saludoDe(nombre);
-  const adjuntos = Object.entries(IMAGENES).filter(([, p]) => fs.existsSync(p)).map(([cid, p]) => ({ filename: cid + '.png', path: p, cid }));
+  const adjuntos = Object.entries(IMAGENES).filter(([, p]) => fs.existsSync(p)).map(([cid, p]) => ({ filename: cid + '.png', path: p, cid })).concat(extra);
   return tr.sendMail({
     from: c.from, to: a, subject: prefijoAsunto + m.asunto, replyTo: c.replyTo || undefined,
     html: htmlMail({ ...m, saludo }), text: textoMail({ ...m, saludo }), attachments: adjuntos,
@@ -164,6 +185,7 @@ function anotar(linea) { try { fs.mkdirSync(DIR, { recursive: true }); fs.append
 const trabajos = {}; // id -> estado del envío en curso o terminado (en memoria; el detalle queda en el log)
 
 function registrar(app, { requireAuth, comitentes }) {
+  app.use('/api/mails', express.json({ limit: '12mb' }));
   const soloAlyc = (req, res, next) => (req.sesion.rol === 'alyc' || req.sesion.rol === 'admin' ? next() : res.status(403).json({ ok: false, error: 'Solo la ALyC puede enviar mails' }));
 
   // Destinatarios únicos por mail (varias cuentas pueden compartirlo), sin los dados de baja ni los mails mal formados.
@@ -276,9 +298,11 @@ Respondé SOLO con JSON válido con estas claves: {"asunto": "hasta 70 caractere
     const destino = String(a || '').trim().toLowerCase();
     if (!mailValido(destino)) return res.status(400).json({ ok: false, error: 'Poné una dirección de mail válida para la prueba.' });
     if (!limpiaLinea(req.body.asunto) || !String(req.body.cuerpo || '').trim()) return res.status(400).json({ ok: false, error: 'Falta el asunto o el texto del mail.' });
+    const adj = prepararAdjuntos(req.body.adjuntos);
+    if (adj.error) return res.status(400).json({ ok: false, error: adj.error });
     try {
-      await enviarUno(transporte(c), c, { a: destino, mail: req.body, nombre: '', prefijoAsunto: '[PRUEBA] ' });
-      anotar({ ts: new Date().toISOString(), tipo: 'prueba', por: req.sesion.email, a: destino, asunto: limpiaLinea(req.body.asunto) });
+      await enviarUno(transporte(c), c, { a: destino, mail: req.body, nombre: '', prefijoAsunto: '[PRUEBA] ', adjuntos: adj.files });
+      anotar({ ts: new Date().toISOString(), tipo: 'prueba', por: req.sesion.email, a: destino, asunto: limpiaLinea(req.body.asunto), adjuntos: adj.files.map(f => f.filename) });
       res.json({ ok: true, enviado: destino });
     } catch (e) { res.status(502).json({ ok: false, error: 'No se pudo enviar la prueba: ' + String(e.message).slice(0, 200) }); }
   });
@@ -297,17 +321,19 @@ Respondé SOLO con JSON válido con estas claves: {"asunto": "hasta 70 caractere
     if (Array.isArray(managers) && managers.length) lista = lista.filter(d => d.managers.some(m => managers.map(String).includes(m)));
     if (Array.isArray(emails) && emails.length) { const set = new Set(emails.map(x => String(x).toLowerCase())); lista = lista.filter(d => set.has(d.email)); }
     if (!lista.length) return res.status(400).json({ ok: false, error: 'No hay destinatarios con esos filtros.' });
+    const adj = prepararAdjuntos(mail.adjuntos);
+    if (adj.error) return res.status(400).json({ ok: false, error: adj.error });
     if (Number(confirmar) !== lista.length) return res.status(400).json({ ok: false, error: `Para enviar tenés que confirmar la cantidad exacta de destinatarios: son ${lista.length}.`, destinatarios: lista.length });
     const id = 'e' + Date.now();
-    const t = trabajos[id] = { id, estado: 'enviando', total: lista.length, enviados: 0, fallidos: 0, asunto: limpiaLinea(asunto), por: req.sesion.email, inicio: new Date().toISOString(), errores: [] };
-    anotar({ ts: t.inicio, tipo: 'inicio', id, por: t.por, asunto: t.asunto, total: t.total });
+    const t = trabajos[id] = { id, estado: 'enviando', total: lista.length, enviados: 0, fallidos: 0, asunto: limpiaLinea(asunto), por: req.sesion.email, inicio: new Date().toISOString(), errores: [], adjuntos: adj.files.map(f => f.filename) };
+    anotar({ ts: t.inicio, tipo: 'inicio', id, por: t.por, asunto: t.asunto, total: t.total, adjuntos: t.adjuntos });
     res.json({ ok: true, id, total: t.total });
     // Segundo plano: tandas de MAIL_LOTE con pausa; un fallo no frena al resto.
     (async () => {
       const tr = transporte(c);
       for (let i = 0; i < lista.length; i += c.lote) {
         for (const d of lista.slice(i, i + c.lote)) {
-          try { await enviarUno(tr, c, { a: d.email, mail, nombre: d.nombre }); t.enviados++; anotar({ ts: new Date().toISOString(), tipo: 'ok', id, a: d.email }); }
+          try { await enviarUno(tr, c, { a: d.email, mail, nombre: d.nombre, adjuntos: adj.files }); t.enviados++; anotar({ ts: new Date().toISOString(), tipo: 'ok', id, a: d.email }); }
           catch (e) { t.fallidos++; t.errores.push({ a: d.email, error: String(e.message).slice(0, 120) }); anotar({ ts: new Date().toISOString(), tipo: 'error', id, a: d.email, error: String(e.message).slice(0, 160) }); }
         }
         if (i + c.lote < lista.length && c.pausa) await new Promise(r => setTimeout(r, c.pausa));
