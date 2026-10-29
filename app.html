@@ -619,6 +619,9 @@
   .ml-fila input { width: auto; padding: 0; }
   .ml-fila .ml-n { font-weight: 600; flex: 0 1 auto; }
   .ml-fila .mk-nota { margin-left: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ml-baja { flex: 0 0 auto; margin-left: 8px; padding: 3px 9px; font-size: 12px; border: 1px solid var(--border); border-radius: 999px; background: none; color: var(--text-dim, #93a3b0); cursor: pointer; }
+  .ml-baja:hover { border-color: var(--neg, #e5484d); color: var(--neg, #e5484d); }
+  .ml-fila .mk-nota + .ml-baja { margin-left: 8px; }
   .ml-x { margin-left: auto; background: none; border: none; color: var(--text-dim, #93a3b0); font-size: 16px; line-height: 1; cursor: pointer; padding: 0 4px; }
   .ml-x:hover { color: var(--neg, #e5484d); }
   .ml-adj { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 12px 0 4px; }

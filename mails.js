@@ -343,6 +343,12 @@ Respondé SOLO con JSON válido con estas claves: {"asunto": "hasta 70 caractere
     })().catch(e => { t.estado = 'error'; t.error = String(e.message).slice(0, 200); });
   });
 
+  // Lista de baja con el nombre del cliente cuando el mail es de un comitente (puede haber mails dados de baja que no son clientes).
+  app.get('/api/mails/bajas', requireAuth, soloAlyc, async (req, res) => {
+    const nombres = Object.fromEntries((await destinatarios()).map(d => [d.email, d.nombre]));
+    res.json({ ok: true, bajas: [...leerBajas()].sort().map(email => ({ email, nombre: nombres[email] || '' })) });
+  });
+
   app.get('/api/mails/envios', requireAuth, soloAlyc, (req, res) => {
     res.json({ ok: true, envios: Object.values(trabajos).sort((a, b) => b.inicio.localeCompare(a.inicio)).slice(0, 10) });
   });

@@ -3,7 +3,7 @@
 const ML = {
   estado: null, dest: null, managers: [], grupos: [],
   sel: new Set(), indiv: new Set(), gsel: new Set(), busca: "", res: [], gnombre: "",
-  asunto: "", titulo: "", segmento: "", cuerpo: "", botonTexto: "", botonUrl: "", instr: "", adj: [],
+  asunto: "", titulo: "", segmento: "", cuerpo: "", botonTexto: "", botonUrl: "", instr: "", adj: [], bajas: [], bajaMail: "",
   redactando: false, msg: "", msgOk: true, prueba: "", envios: [], confirmando: false, vistaTimer: null, pollTimer: null,
 };
 const ML_SEGMENTOS = ["Empresas", "Financiamiento PyME", "Banca Privada", "Institucionales"];
@@ -38,9 +38,9 @@ async function renderMails() {
   if (!ML.estado) {
     el.innerHTML = `<div class="mk-cab"><div><span class="mk-sup">PANEL ALYC</span><h1>Mails a clientes</h1></div></div><p class="mk-vacio">Cargando…</p>`;
     try {
-      const [e, d, g] = await Promise.all([mlApi("estado"), mlApi("destinatarios"), mlApi("grupos")]);
+      const [e, d, g, b] = await Promise.all([mlApi("estado"), mlApi("destinatarios"), mlApi("grupos"), mlApi("bajas")]);
       if (!e.ok || !d.ok) throw new Error(e.error || d.error);
-      ML.estado = e; ML.dest = d.destinatarios; ML.managers = d.managers; ML.grupos = g.ok ? g.grupos : [];
+      ML.estado = e; ML.dest = d.destinatarios; ML.managers = d.managers; ML.grupos = g.ok ? g.grupos : []; ML.bajas = b.ok ? b.bajas : [];
       mlEnvios();
     } catch (err) { el.innerHTML += `<p class="mk-vacio">No se pudo cargar: ${mlEsc(err.message)}</p>`; return; }
   }
@@ -65,7 +65,7 @@ function mlHtmlResultados() {
   if (!todos.length) return `<p class="mk-nota" style="margin:8px 0 0">No hay clientes con esa búsqueda.</p>`;
   const todosElegidos = todos.every(d => ML.indiv.has(d.email));
   return `<div class="mk-pills" style="margin:8px 0 0"><button onclick="mlElegirResultados(${todosElegidos ? "false" : "true"})">${todosElegidos ? "Quitar" : "Elegir"} los ${todos.length} resultados</button><span class="mk-nota">${todos.length > 40 ? "Se muestran 40: afinó la búsqueda para ver el resto." : ""}</span></div>
-    <div class="ml-res">${ML.res.map((d, i) => `<label class="ml-fila"><input type="checkbox" ${ML.indiv.has(d.email) ? "checked" : ""} onchange="mlIndiv(${i}, this.checked)"><span class="ml-n">${mlEsc(d.nombre || "(sin nombre)")}</span><span class="mk-nota">${mlEsc(d.email)} · cta ${mlEsc(d.cuentas.slice(0, 3).join(", "))}${d.cuentas.length > 3 ? "…" : ""}</span></label>`).join("")}</div>`;
+    <div class="ml-res">${ML.res.map((d, i) => `<label class="ml-fila"><input type="checkbox" ${ML.indiv.has(d.email) ? "checked" : ""} onchange="mlIndiv(${i}, this.checked)"><span class="ml-n">${mlEsc(d.nombre || "(sin nombre)")}</span><span class="mk-nota">${mlEsc(d.email)} · cta ${mlEsc(d.cuentas.slice(0, 3).join(", "))}${d.cuentas.length > 3 ? "…" : ""}</span><button class="ml-baja" title="Sacarlo de la lista de difusión: no recibe más mails" onclick="event.preventDefault(); mlBaja(${i})">Sacar de la lista</button></label>`).join("")}</div>`;
 }
 
 function mlPintar() {
@@ -129,6 +129,15 @@ function mlPintar() {
           </div>` : ""}
         </section>
         <section class="mk-card">
+          <h3>LISTA DE BAJA <span class="mk-nota">· ${ML.bajas.length} ${ML.bajas.length === 1 ? "persona" : "personas"} fuera de la difusión</span></h3>
+          <p class="mk-nota" style="margin:0 0 10px">Quien está acá no recibe ningún mail, aunque esté en un manager o en un grupo. Para sacar a un cliente, buscalo arriba y tocá "Sacar de la lista". Si alguien responde BAJA a un mail, cargalo acá.</p>
+          <div class="mk-pills" style="margin:0 0 10px">
+            <input id="mlBajaMail" type="email" placeholder="Mail a dar de baja" value="${mlEsc(ML.bajaMail)}" oninput="ML.bajaMail=this.value" onkeydown="if(event.key==='Enter')mlBajaManual()" style="min-width:250px">
+            <button onclick="mlBajaManual()">Sacar de la lista</button>
+          </div>
+          ${ML.bajas.length ? `<div class="ml-res">${ML.bajas.map((b, i) => `<div class="ml-fila"><span class="ml-n">${mlEsc(b.nombre || "(no es cliente)")}</span><span class="mk-nota">${mlEsc(b.email)}</span><button class="ml-baja" onclick="mlReactivar(${i})">Volver a incluir</button></div>`).join("")}</div>` : `<p class="mk-nota" style="margin:0">Nadie dado de baja por ahora.</p>`}
+        </section>
+        <section class="mk-card">
           <h3>4 · PROBAR Y ENVIAR</h3>
           ${ML.msg ? `<p class="${ML.msgOk ? "pos" : "neg"}" style="margin:0 0 10px;font-size:13px">${mlEsc(ML.msg)}</p>` : ""}
           <div class="mk-pills" style="margin-bottom:6px">
@@ -184,6 +193,33 @@ async function mlAdjuntar(files) {
   mlPintar();
 }
 function mlQuitarAdjunto(i) { ML.adj.splice(i, 1); mlPintar(); }
+
+// Baja = sacar el mail de toda difusión (queda en mercado/mails-baja.json y se excluye en cada envío). Es reversible.
+async function mlCambiarBaja(email, quitar) {
+  const j = await mlApi("baja", { email, quitar: !!quitar });
+  if (!j.ok) throw new Error(j.error || "No se pudo actualizar la lista de baja");
+  const d = (ML.dest || []).find(x => x.email === email); if (d) d.baja = !quitar;
+  if (!quitar) { ML.indiv.delete(email); if (!ML.bajas.some(b => b.email === email)) ML.bajas.push({ email, nombre: d ? d.nombre : "" }); }
+  else ML.bajas = ML.bajas.filter(b => b.email !== email);
+  ML.bajas.sort((a, b) => a.email.localeCompare(b.email));
+  ML.estado.destinatarios.bajas = (ML.dest || []).filter(x => x.baja).length;
+}
+async function mlBaja(i) {
+  const d = ML.res[i]; if (!d) return;
+  if (!confirm(`¿Sacar a ${d.nombre || d.email} (${d.email}) de la lista de difusión? No va a recibir más mails de Equanima desde esta página. Después lo podés volver a incluir.`)) return;
+  try { await mlCambiarBaja(d.email, false); ML.msg = `${d.email} fuera de la lista de difusión.`; ML.msgOk = true; } catch (e) { ML.msg = e.message; ML.msgOk = false; }
+  mlPintar();
+}
+async function mlBajaManual() {
+  const email = ML.bajaMail.trim().toLowerCase(); if (!email) return;
+  try { await mlCambiarBaja(email, false); ML.bajaMail = ""; ML.msg = `${email} fuera de la lista de difusión.`; ML.msgOk = true; } catch (e) { ML.msg = e.message; ML.msgOk = false; }
+  mlPintar();
+}
+async function mlReactivar(i) {
+  const b = ML.bajas[i]; if (!b) return;
+  try { await mlCambiarBaja(b.email, true); ML.msg = `${b.email} vuelve a estar en la difusión.`; ML.msgOk = true; } catch (e) { ML.msg = e.message; ML.msgOk = false; }
+  mlPintar();
+}
 
 function mlTodos() { ML.sel.clear(); ML.indiv.clear(); ML.gsel.clear(); mlPintar(); }
 function mlManager(cod, on) { if (on) ML.sel.add(cod); else ML.sel.delete(cod); mlPintar(); }
