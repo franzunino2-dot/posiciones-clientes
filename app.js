@@ -172,6 +172,7 @@ function render() {
   else if (vistaActual === "mapa") renderMapa();
   else if (vistaActual === "fondos") renderFondos();
   else if (vistaActual === "calendario") renderCalendario(clientesVisibles);
+  else if (vistaActual === "mails") renderMails();
   renderTicker();
 }
 

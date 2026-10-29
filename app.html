@@ -601,6 +601,16 @@
   .ticker { background: var(--bg-side); }
   .mkt.open { border-color: rgba(53,211,161,.35); }
   ::selection { background: var(--accent); color: var(--on-accent); }
+  /* Mails a clientes */
+  textarea { width: 100%; background: var(--bg-card2); color: var(--text); border: 1px solid var(--border); border-radius: var(--r); padding: 10px 12px; font: inherit; font-size: 14px; line-height: 1.5; resize: vertical; }
+  textarea:focus, input:focus { outline: none; border-color: var(--accent); }
+  .ml-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 520px); gap: 18px; align-items: start; }
+  @media (max-width: 1180px) { .ml-grid { grid-template-columns: 1fr; } }
+  .ml-mgrs { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 6px 14px; }
+  .ml-chk { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+  .ml-chk input { width: auto; padding: 0; }
+  .ml-confirma { border: 1px solid var(--accent); border-radius: var(--r); padding: 14px; background: #0e385244; }
+  button:disabled { opacity: .4; cursor: not-allowed; }
   /* Controles nativos (barras de desplazamiento, calendarios de fecha) acordes a cada tema. */
   html, body { color-scheme: dark; }
   #clienteApp { color-scheme: light; }
@@ -702,6 +712,7 @@
     <div class="brand"><div class="marca"><img class="ico" src="icono-equanima-blanco.svg" alt=""><img class="nom" src="logo-equanima-blanco.svg" alt="Equanima Securities"></div><span>Tu cartera, en un solo lugar</span></div>
     <nav>
       <button class="navbtn" data-view="alyc" data-alyc-only="1"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Panel ALyC</button>
+      <button class="navbtn" data-view="mails" data-alyc-only="1"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>Mails a clientes</button>
       <button class="navbtn" data-view="inicio" data-no-alyc="1"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>Resumen de clientes</button>
       <div class="navgroup open"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>Inicio</div>
       <button class="navbtn sub" data-view="dashboardCliente"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v9h9"/></svg>Cartera</button>
@@ -758,6 +769,7 @@
       <div class="view" id="view-mercado"></div>
       <div class="view" id="view-mapa"></div>
       <div class="view" id="view-fondos"></div>
+      <div class="view" id="view-mails"></div>
       <div class="view" id="view-comitentes"></div>
     </main>
   </div>
@@ -778,5 +790,6 @@
 <script src="fondos-ui.js"></script>
 <script src="cliente.js"></script>
 <script src="calendario-ui.js"></script>
+<script src="mails-ui.js"></script>
 </body>
 </html>

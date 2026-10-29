@@ -32,7 +32,7 @@ app.use(express.json());
 // archivos de trabajo en mercado/ e historial/, código del servidor, logs, scripts de arranque, .env, .git) no se
 // sirve nunca: los datos van por la API, con sesión. Se decide por lista de permitidos y no de prohibidos porque
 // Windows acepta variantes del nombre (mayúsculas, nombres cortos, puntos al final) que una lista negra no cubre.
-const JS_PUBLICOS = new Set(['app', 'alyc', 'perfil', 'manager', 'resultado', 'mercado-ui', 'mapa-ui', 'fondos-ui', 'calendario-ui', 'cliente', 'data', 'importar', 'logo-eq']);
+const JS_PUBLICOS = new Set(['app', 'alyc', 'perfil', 'manager', 'resultado', 'mercado-ui', 'mapa-ui', 'fondos-ui', 'calendario-ui', 'mails-ui', 'cliente', 'data', 'importar', 'logo-eq']);
 const EXT_PUBLICAS = new Set(['.html', '.css', '.png', '.jpg', '.jpeg', '.svg', '.ico', '.webp', '.woff', '.woff2']);
 app.use((req, res, next) => {
   if (req.path.startsWith('/api/')) return next();
@@ -777,6 +777,9 @@ app.post('/api/historial/:id/refrescar', requireAuth, async (req, res) => {
     res.json({ ok: true, resumen: await historial.actualizar(id) });
   } catch (e) { res.status(502).json({ ok: false, error: String(e.message || e).slice(0, 200) }); }
 });
+
+// Mails a los clientes (redacción con IA, prueba y envío por tandas; solo la ALyC). Ver mails.js.
+require('./mails').registrar(app, { requireAuth, comitentes: armarComitentes });
 
 app.listen(PORT, () => {
   console.log(`Posiciones de Clientes escuchando en http://localhost:${PORT}`);
