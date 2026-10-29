@@ -31,8 +31,8 @@
 
   /* Barra superior */
   nav.top { position: sticky; top: 0; z-index: 10; background: var(--deep); border-bottom: 1px solid var(--line-on-deep); }
-  nav.top .wrap { display: flex; align-items: center; justify-content: space-between; height: 68px; gap: 16px; }
-  .logo img { display: block; height: 34px; width: auto; }
+  nav.top .wrap { display: flex; align-items: center; justify-content: space-between; height: 72px; gap: 16px; }
+  .logo img { display: block; height: 42px; width: auto; }
   .links { display: flex; gap: 30px; font-size: 15px; color: var(--accent-soft); }
   .links a:hover { color: #fff; }
   .btn { display: inline-flex; align-items: center; gap: 8px; border-radius: var(--r); padding: 13px 24px; font-size: 15px; font-weight: 500; border: 1px solid transparent; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
@@ -46,6 +46,9 @@
 
   /* Portada */
   .hero { background: radial-gradient(1100px 600px at 12% 0%, #17567a66, transparent 60%), linear-gradient(165deg, var(--deep-dark), var(--deep) 75%); color: #fff; padding: 92px 0 84px; }
+  .hero { position: relative; overflow: hidden; }
+  .hero::after { content: ""; position: absolute; left: -140px; bottom: -190px; width: 620px; height: 620px; background: url(icono-equanima-blanco.svg) no-repeat center / contain; opacity: .06; pointer-events: none; }
+  .hero .wrap { position: relative; z-index: 1; }
   .hero-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 56px; align-items: center; }
   .hero .eyebrow { color: var(--accent); }
   h1 { font-weight: 500; font-size: clamp(2.2rem, 4.6vw, 3.8rem); line-height: 1.08; letter-spacing: -.015em; margin: 0 0 22px; }
@@ -114,7 +117,7 @@
 
 <nav class="top">
   <div class="wrap">
-    <a href="#" class="logo" aria-label="Equanima Securities"><img src="logo-equanima-blanco.svg" alt="Equanima Securities"></a>
+    <a href="#" class="logo" aria-label="Equanima Securities"><img src="icono-equanima-blanco.svg" alt="Equanima Securities"></a>
     <div class="links">
       <a href="#que-ves">Qué ves</a>
       <a href="#como-funciona">Cómo funciona</a>
@@ -257,7 +260,7 @@
 <footer>
   <div class="wrap">
     <div>
-      <img src="logo-equanima-blanco.svg" alt="Equanima Securities">
+      <img src="icono-equanima-blanco.svg" alt="Equanima Securities" style="height:52px">
       <p>Equanima Securities S.A. · Agente de Liquidación y Compensación Propio, CNV N.º 191.</p>
       <p><a href="https://equanimasecurities.com/" target="_blank" rel="noopener">equanimasecurities.com</a> · <a href="mailto:info@equanimasecurities.com">info@equanimasecurities.com</a></p>
     </div>

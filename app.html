@@ -590,7 +590,7 @@
   .navgroup { color: var(--accent-soft); text-transform: uppercase; font-family: var(--mono); font-size: 11px; letter-spacing: .08em; font-weight: 400; }
   .navgroup.open { background: none; }
   .sidebar { border-right: 1px solid var(--border); }
-  .sidebar .brand img { filter: none; mix-blend-mode: normal; height: 38px; margin-bottom: 8px; }
+  .sidebar .brand img { filter: none; mix-blend-mode: normal; height: 46px; margin-bottom: 10px; }
   .panel, .stat-card, .mk-card, .cal-tile, .mp-caja, .hero-card, .mini { box-shadow: none; }
   thead th { background: transparent; color: var(--muted); font-family: var(--mono); font-size: 11px; font-weight: 400; letter-spacing: .05em; text-transform: uppercase; border-bottom: 1px solid var(--border); }
   tbody td, tfoot td { border-bottom: 1px solid var(--border); }
@@ -604,7 +604,9 @@
   .sidebar nav { scrollbar-width: thin; scrollbar-color: #b3dcea55 transparent; }
   #login, #perfil { background: radial-gradient(1200px 700px at 15% 0%, #17567a55, transparent 60%), linear-gradient(165deg, var(--deep-dark), var(--bg) 70%); }
   #login { gap: 22px; padding: 24px; }
-  .login-logo { display: block; height: 42px; width: auto; }
+  .login-marca { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .login-icono { display: block; height: 72px; width: auto; }
+  .login-logo { display: block; height: 24px; width: auto; opacity: .9; }
   #login .box { width: 360px; max-width: 100%; padding: 30px 28px; gap: 12px; background: #0a2840cc; border: 1px solid var(--border); }
   #login .box h3 { font-weight: 300; font-size: 26px; margin: 0 0 4px; letter-spacing: -.015em; }
   .login-sup { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; color: var(--accent); }
@@ -617,7 +619,7 @@
   /* Vista del comitente: papel claro con encabezado azul petróleo */
   #clienteApp { background: var(--paper-alt); color: var(--ink); }
   .cv-head { background: var(--deep); border-bottom: 0; padding: 12px 28px; }
-  .cv-brand img { height: 34px; }
+  .cv-brand img { height: 40px; }
   #clienteApp .cv-tabs { gap: 2px; }
   #clienteApp .cv-tabs button { color: var(--accent-soft); padding: 10px 16px !important; border-radius: 0 !important; font-weight: 400; }
   #clienteApp .cv-tabs button:hover { background: rgba(255,255,255,.07); color: #fff; }
@@ -653,7 +655,7 @@
 <body>
 
 <div id="login">
-  <img class="login-logo" src="logo-equanima-blanco.svg" alt="Equanima Securities">
+  <div class="login-marca"><img class="login-icono" src="icono-equanima-blanco.svg" alt=""><img class="login-logo" src="logo-equanima-blanco.svg" alt="Equanima Securities"></div>
   <div class="box">
     <span class="login-sup">ACCESO CLIENTES</span>
     <h3>Ingresá a tu cuenta</h3>
@@ -669,7 +671,7 @@
 
 <div id="perfil">
   <div class="perfil-box">
-    <img class="login-logo" src="logo-equanima-blanco.svg" alt="Equanima Securities" style="height:30px;margin-bottom:6px">
+    <img class="login-icono" src="icono-equanima-blanco.svg" alt="Equanima Securities" style="height:44px;margin-bottom:6px">
     <h3>¿Con qué perfil querés entrar?</h3>
     <p class="muted" style="margin:0 0 14px;font-size:13px">Elegí si querés mirar la plataforma como manager o como cliente, buscá a la persona y entrá a su pantalla.</p>
     <div class="perfil-tabs">
@@ -687,7 +689,7 @@
 
 <div id="app">
   <aside class="sidebar">
-    <div class="brand"><img src="logo-equanima-blanco.svg" alt="Equanima Securities"><span>Tu cartera, en un solo lugar</span></div>
+    <div class="brand"><img src="icono-equanima-blanco.svg" alt="Equanima Securities"><span>Tu cartera, en un solo lugar</span></div>
     <nav>
       <button class="navbtn" data-view="alyc" data-alyc-only="1"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Panel ALyC</button>
       <button class="navbtn" data-view="inicio" data-no-alyc="1"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>Resumen de clientes</button>
