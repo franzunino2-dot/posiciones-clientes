@@ -234,16 +234,22 @@ function inicioBuscar(txt, silencioso) {
   const bloqueTickers = tickers.map(e => {
     const hs = e.holders.slice().sort((a, b) => b.p.ars - a.p.ars);
     const nominales = e.holders.every(h => h.p.factorUnidad === 0.01) ? "nominales" : "unidades";
+    // Precio promedio de compra de todos los que lo tienen: ponderado por cantidad, sin las tenencias que entraron sin costo informado.
+    const conCosto = e.holders.filter(h => h.p.co > 0);
+    const cantCosto = conCosto.reduce((s, h) => s + h.p.c, 0);
+    const promedio = cantCosto ? conCosto.reduce((s, h) => s + h.p.c * h.p.co, 0) / cantCosto : 0;
+    const monPromedio = (e.holders[0].p.mon === "USD" ? "USD " : "$ ");
     return `
       <div class="panel resultado-busq">
         <h3 style="margin:0 0 4px"><b>${esc(e.ticker)}</b> <span class="muted" style="font-weight:400">${esc(titulo(e.nombre))}</span></h3>
-        <p class="muted" style="margin:0 0 10px;font-size:13px"><b>${e.holders.length}</b> ${e.holders.length === 1 ? "cliente lo tiene" : "clientes lo tienen"} · ${fmtMoney(e.cantidad, 0)} ${nominales} · ${fmtInicio(hs.reduce((s, h) => s + convInicio(h.c, h.p.ars), 0))}</p>
+        <p class="muted" style="margin:0 0 10px;font-size:13px"><b>${e.holders.length}</b> ${e.holders.length === 1 ? "cliente lo tiene" : "clientes lo tienen"} · ${fmtMoney(e.cantidad, 0)} ${nominales} · ${fmtInicio(hs.reduce((s, h) => s + convInicio(h.c, h.p.ars), 0))}${promedio ? ` · precio prom. de compra <b>${monPromedio}${fmtMoney(promedio, 2)}</b>${conCosto.length < e.holders.length ? ` (de ${conCosto.length} con costo informado)` : ""}` : ""}</p>
         <div class="table-wrap"><table>
-          <thead><tr><th>Comitente</th><th>Nombre</th><th>Cantidad</th><th>Valor</th><th>% de su cartera</th><th>Resultado</th></tr></thead>
+          <thead><tr><th>Comitente</th><th>Nombre</th><th>Cantidad</th><th>Precio de compra</th><th>Valor</th><th>% de su cartera</th><th>Resultado</th></tr></thead>
           <tbody>${hs.slice(0, 50).map(h => {
             const f = INICIO.filas.find(x => x.c.id === h.c.id);
             const tot = f ? f.pos.reduce((s, p) => s + p.ars, 0) || 1 : 1;
             return `<tr class="clic" onclick="inicioAbrir('${esc(h.c.id)}')"><td>${esc(h.c.id)}</td><td>${esc(titulo(h.c.nombre))}</td><td>${fmtMoney(h.p.c, 0)}</td>
+              <td>${h.p.co > 0 ? (h.p.mon === "USD" ? "USD " : "$ ") + fmtMoney(h.p.co, 2) : `<span class="muted" title="Ingresó a la cuenta sin costo informado">sin costo</span>`}</td>
               <td><b>${fmtInicio(convInicio(h.c, h.p.ars))}</b></td><td>${fmtPct(h.p.ars / tot * 100)}</td>
               <td class="${h.p.co ? claseRes(h.p.varPct) : ""}">${h.p.co ? (h.p.varPct > 0 ? "+" : "") + fmtPct(h.p.varPct) : "—"}</td></tr>`;
           }).join("")}</tbody>
