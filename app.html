@@ -590,7 +590,10 @@
   .navgroup { color: var(--accent-soft); text-transform: uppercase; font-family: var(--mono); font-size: 11px; letter-spacing: .08em; font-weight: 400; }
   .navgroup.open { background: none; }
   .sidebar { border-right: 1px solid var(--border); }
-  .sidebar .brand img { filter: none; mix-blend-mode: normal; height: 46px; margin-bottom: 10px; }
+  .sidebar .brand .marca { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .sidebar .brand img { filter: none; mix-blend-mode: normal; display: block; margin: 0; }
+  .sidebar .brand .ico { height: 44px; width: auto; }
+  .sidebar .brand .nom { height: 27px; width: auto; }
   .panel, .stat-card, .mk-card, .cal-tile, .mp-caja, .hero-card, .mini { box-shadow: none; }
   thead th { background: transparent; color: var(--muted); font-family: var(--mono); font-size: 11px; font-weight: 400; letter-spacing: .05em; text-transform: uppercase; border-bottom: 1px solid var(--border); }
   tbody td, tfoot td { border-bottom: 1px solid var(--border); }
@@ -619,7 +622,14 @@
   /* Vista del comitente: papel claro con encabezado azul petróleo */
   #clienteApp { background: var(--paper-alt); color: var(--ink); }
   .cv-head { background: var(--deep); border-bottom: 0; padding: 12px 28px; }
-  .cv-brand img { height: 40px; }
+  .cv-brand { display: flex; align-items: center; gap: 12px; }
+  .cv-brand .ico { height: 40px; width: auto; }
+  .cv-brand .nom { height: 25px; width: auto; }
+  /* Triángulo de marca, grande y muy translúcido, de fondo en el panel del manager. */
+  #app { position: relative; }
+  #app::before { content: ""; position: fixed; right: -110px; bottom: -150px; width: 620px; height: 620px; background: url(icono-equanima-blanco.svg) no-repeat center / contain; opacity: .06; pointer-events: none; z-index: 0; }
+  #app .sidebar, #app .content { position: relative; z-index: 1; }
+  #app .sidebar { position: sticky; }
   #clienteApp .cv-tabs { gap: 2px; }
   #clienteApp .cv-tabs button { color: var(--accent-soft); padding: 10px 16px !important; border-radius: 0 !important; font-weight: 400; }
   #clienteApp .cv-tabs button:hover { background: rgba(255,255,255,.07); color: #fff; }
@@ -689,7 +699,7 @@
 
 <div id="app">
   <aside class="sidebar">
-    <div class="brand"><img src="icono-equanima-blanco.svg" alt="Equanima Securities"><span>Tu cartera, en un solo lugar</span></div>
+    <div class="brand"><div class="marca"><img class="ico" src="icono-equanima-blanco.svg" alt=""><img class="nom" src="logo-equanima-blanco.svg" alt="Equanima Securities"></div><span>Tu cartera, en un solo lugar</span></div>
     <nav>
       <button class="navbtn" data-view="alyc" data-alyc-only="1"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Panel ALyC</button>
       <button class="navbtn" data-view="inicio" data-no-alyc="1"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>Resumen de clientes</button>

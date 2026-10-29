@@ -32,7 +32,9 @@
   /* Barra superior */
   nav.top { position: sticky; top: 0; z-index: 10; background: var(--deep); border-bottom: 1px solid var(--line-on-deep); }
   nav.top .wrap { display: flex; align-items: center; justify-content: space-between; height: 72px; gap: 16px; }
-  .logo img { display: block; height: 42px; width: auto; }
+  .logo { display: flex; align-items: center; gap: 14px; }
+  .logo .ico { display: block; height: 42px; width: auto; }
+  .logo .nom { display: block; height: 26px; width: auto; }
   .links { display: flex; gap: 30px; font-size: 15px; color: var(--accent-soft); }
   .links a:hover { color: #fff; }
   .btn { display: inline-flex; align-items: center; gap: 8px; border-radius: var(--r); padding: 13px 24px; font-size: 15px; font-weight: 500; border: 1px solid transparent; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
@@ -117,7 +119,7 @@
 
 <nav class="top">
   <div class="wrap">
-    <a href="#" class="logo" aria-label="Equanima Securities"><img src="icono-equanima-blanco.svg" alt="Equanima Securities"></a>
+    <a href="#" class="logo" aria-label="Equanima Securities"><img class="ico" src="icono-equanima-blanco.svg" alt=""><img class="nom" src="logo-equanima-blanco.svg" alt="Equanima Securities"></a>
     <div class="links">
       <a href="#que-ves">Qué ves</a>
       <a href="#como-funciona">Cómo funciona</a>
@@ -260,7 +262,7 @@
 <footer>
   <div class="wrap">
     <div>
-      <img src="icono-equanima-blanco.svg" alt="Equanima Securities" style="height:52px">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px"><img src="icono-equanima-blanco.svg" alt="" style="height:52px;margin:0"><img src="logo-equanima-blanco.svg" alt="Equanima Securities" style="height:30px;margin:0"></div>
       <p>Equanima Securities S.A. · Agente de Liquidación y Compensación Propio, CNV N.º 191.</p>
       <p><a href="https://equanimasecurities.com/" target="_blank" rel="noopener">equanimasecurities.com</a> · <a href="mailto:info@equanimasecurities.com">info@equanimasecurities.com</a></p>
     </div>
