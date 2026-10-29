@@ -3,101 +3,110 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Equanima — Tus carteras, en un solo lugar</title>
-<meta name="description" content="Plataforma de Equanima Securities para ver posiciones, cauciones y rendimiento de cada comitente, en pesos y en dólares.">
+<title>Equanima Securities · Tu cuenta, en un solo lugar</title>
+<meta name="description" content="Seguí tus posiciones, tu rendimiento y tus movimientos en pesos y en dólares con los datos de tu cuenta comitente en Equanima Securities.">
+<link rel="icon" type="image/svg+xml" href="icono-equanima.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0b1220;
-    --bg-soft: #0e1729;
-    --card: #111b2d;
-    --card2: #16233a;
-    --border: #1d2b44;
-    --text: #e8eef9;
-    --soft: #b7c3d8;
-    --muted: #8a9bb8;
-    --accent: #0ea5e9;
-    --green: #2dd4a0;
-    --red: #ff6b6b;
-    --serif: 'Instrument Serif', Georgia, 'Times New Roman', serif;
+    /* Marca Equanima (equanimasecurities.com) */
+    --deep: #0e3852; --deep-dark: #082740; --deep-hover: #17567a;
+    --accent: #4ab0ce; --accent-soft: #b3dcea; --slate: #93a3b0;
+    --paper: #ffffff; --paper-alt: #edf1f4;
+    --ink: #0e3852; --ink-muted: #44606e;
+    --on-deep: #ffffff; --on-deep-soft: #e6eef4;
+    --line: #44606e47; --line-on-deep: #b3dcea38;
+    --green: #35d3a1; --red: #f26d6d;
+    --font: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --r: 2px;
   }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
-  body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; line-height: 1.5; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--font); line-height: 1.5; -webkit-font-smoothing: antialiased; }
   a { color: inherit; text-decoration: none; }
   .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+  .eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--deep-hover); margin-bottom: 14px; }
 
-  nav.top { position: sticky; top: 0; z-index: 10; background: rgba(11,18,32,.85); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
-  nav.top .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 16px; }
-  .logo { font-family: var(--serif); font-size: 30px; letter-spacing: -.01em; }
-  .logo i { color: var(--accent); }
-  .links { display: flex; gap: 28px; font-size: 14px; color: var(--soft); }
-  .links a:hover { color: var(--text); }
-  .btn { display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; padding: 11px 22px; font-size: 14px; font-weight: 600; border: 1px solid transparent; cursor: pointer; }
-  .btn-primary { background: var(--accent); color: #04121c; }
-  .btn-primary:hover { filter: brightness(1.1); }
-  .btn-ghost { border-color: var(--border); color: var(--text); background: transparent; }
-  .btn-ghost:hover { border-color: var(--accent); }
-  nav.top .btn { padding: 9px 18px; }
+  /* Barra superior */
+  nav.top { position: sticky; top: 0; z-index: 10; background: var(--deep); border-bottom: 1px solid var(--line-on-deep); }
+  nav.top .wrap { display: flex; align-items: center; justify-content: space-between; height: 68px; gap: 16px; }
+  .logo img { display: block; height: 34px; width: auto; }
+  .links { display: flex; gap: 30px; font-size: 15px; color: var(--accent-soft); }
+  .links a:hover { color: #fff; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; border-radius: var(--r); padding: 13px 24px; font-size: 15px; font-weight: 500; border: 1px solid transparent; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+  .btn-primary { background: var(--accent); color: var(--deep-dark); }
+  .btn-primary:hover { background: var(--accent-soft); }
+  .btn-ghost { border-color: var(--line-on-deep); color: #fff; background: transparent; }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent-soft); }
+  .btn-deep { background: var(--deep); color: #fff; }
+  .btn-deep:hover { background: var(--deep-hover); }
+  nav.top .btn { padding: 9px 18px; font-size: 14px; }
 
-  .hero { padding: 84px 0 56px; }
-  .hero-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 48px; align-items: center; }
-  h1 { font-family: var(--serif); font-weight: 400; font-size: 66px; line-height: 1.04; letter-spacing: -.015em; margin: 0 0 20px; }
-  h1 em { color: var(--accent); }
-  .lead { font-size: 18px; color: var(--soft); max-width: 520px; margin: 0 0 30px; }
-  .cta-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 26px; }
-  .badges { display: flex; gap: 20px; flex-wrap: wrap; color: var(--muted); font-size: 13px; }
-  .badges span::before { content: '✓'; color: var(--green); margin-right: 6px; }
+  /* Portada */
+  .hero { background: radial-gradient(1100px 600px at 12% 0%, #17567a66, transparent 60%), linear-gradient(165deg, var(--deep-dark), var(--deep) 75%); color: #fff; padding: 92px 0 84px; }
+  .hero-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 56px; align-items: center; }
+  .hero .eyebrow { color: var(--accent); }
+  h1 { font-weight: 500; font-size: clamp(2.2rem, 4.6vw, 3.8rem); line-height: 1.08; letter-spacing: -.015em; margin: 0 0 22px; }
+  h1 em { font-style: normal; color: var(--accent); }
+  .lead { font-size: 18px; color: var(--on-deep-soft); max-width: 520px; margin: 0 0 32px; font-weight: 300; }
+  .cta-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 28px; }
+  .badges { display: flex; gap: 22px; flex-wrap: wrap; color: var(--accent-soft); font-size: 13px; }
+  .badges span::before { content: ''; display: inline-block; width: 6px; height: 6px; background: var(--accent); margin-right: 8px; vertical-align: 1px; }
 
-  .mock { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 22px; box-shadow: 0 30px 80px rgba(0,0,0,.35); }
-  .mock-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; font-size: 12px; color: var(--muted); }
+  .mock { background: #0a2840cc; border: 1px solid var(--line-on-deep); border-radius: var(--r); padding: 24px; }
+  .mock-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--slate); }
   .live { color: var(--green); }
   .live::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--green); margin-right: 6px; }
-  .mock-title { font-size: 13px; color: var(--muted); }
-  .mock-big { font-family: var(--serif); font-size: 46px; line-height: 1.05; margin: 2px 0 14px; }
-  .mock-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
-  .mini { background: var(--card2); border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
-  .mini small { display: block; color: var(--muted); font-size: 11px; }
-  .mini b { font-size: 17px; }
+  .mock-title { font-size: 13px; color: var(--slate); }
+  .mock-big { font-size: 42px; font-weight: 300; line-height: 1.05; margin: 2px 0 14px; letter-spacing: -.02em; }
+  .mock-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+  .mini { background: #0e3852; border: 1px solid var(--line-on-deep); border-radius: var(--r); padding: 12px; }
+  .mini small { display: block; color: var(--slate); font-size: 11px; }
+  .mini b { font-size: 17px; font-weight: 500; }
   .pos { color: var(--green); } .neg { color: var(--red); }
-  .mock-note { margin-top: 14px; font-size: 11px; color: var(--muted); text-align: center; }
+  .mock-note { margin-top: 14px; font-size: 11px; color: var(--slate); text-align: center; }
 
-  section { padding: 76px 0; border-top: 1px solid var(--border); }
-  .eyebrow { color: var(--accent); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 12px; }
-  h2 { font-family: var(--serif); font-weight: 400; font-size: 46px; line-height: 1.08; letter-spacing: -.01em; margin: 0 0 14px; max-width: 760px; }
-  h2 em { color: var(--accent); }
-  .sub { color: var(--soft); font-size: 17px; max-width: 640px; margin: 0 0 40px; }
+  /* Secciones */
+  section { padding: 84px 0; }
+  section.alt { background: var(--paper-alt); }
+  h2 { font-weight: 300; font-size: clamp(1.8rem, 3.4vw, 2.6rem); line-height: 1.12; letter-spacing: -.015em; margin: 0 0 14px; max-width: 760px; color: var(--ink); }
+  h2 em { font-style: normal; color: var(--deep-hover); font-weight: 400; }
+  .sub { color: var(--ink-muted); font-size: 17px; max-width: 640px; margin: 0 0 44px; font-weight: 300; }
 
-  .cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 26px; }
-  .card .n { font-family: var(--serif); font-size: 36px; color: var(--accent); line-height: 1; margin-bottom: 10px; }
-  .card h3 { font-size: 19px; margin: 0 0 8px; }
-  .card p { margin: 0; color: var(--soft); font-size: 15px; }
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+  .card { background: var(--paper); padding: 30px 28px; }
+  section.alt .card { background: var(--paper); }
+  .card .n { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; color: var(--deep-hover); margin-bottom: 18px; }
+  .card h3 { font-size: 20px; font-weight: 500; margin: 0 0 10px; color: var(--ink); }
+  .card p { margin: 0; color: var(--ink-muted); font-size: 15px; font-weight: 300; }
 
-  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
-  .step { background: var(--bg-soft); border: 1px solid var(--border); border-radius: 18px; padding: 26px; }
-  .step .n { width: 34px; height: 34px; border-radius: 50%; background: #0f2a45; color: var(--accent); display: grid; place-items: center; font-weight: 700; margin-bottom: 14px; }
-  .step h3 { margin: 0 0 8px; font-size: 18px; }
-  .step p { margin: 0; color: var(--soft); font-size: 15px; }
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+  .step { border-top: 2px solid var(--deep); padding-top: 20px; }
+  .step .n { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; color: var(--deep-hover); margin-bottom: 12px; }
+  .step h3 { margin: 0 0 8px; font-size: 20px; font-weight: 500; }
+  .step p { margin: 0; color: var(--ink-muted); font-size: 15px; font-weight: 300; }
 
-  .who { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-  .who .card.soon { opacity: .75; border-style: dashed; }
-  .tag { display: inline-block; font-size: 11px; border-radius: 999px; padding: 3px 10px; margin-bottom: 12px; background: #0f2a45; color: var(--accent); }
-  .tag.gris { background: var(--card2); color: var(--muted); }
+  .who { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); border: 1px solid var(--line); }
+  .tag { display: inline-block; font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; padding: 4px 10px; margin-bottom: 16px; background: var(--deep); color: #fff; border-radius: var(--r); }
 
-  .final { text-align: center; padding: 96px 0; }
-  .final h2 { margin: 0 auto 14px; }
-  .final .sub { margin: 0 auto 30px; }
+  .final { background: linear-gradient(165deg, var(--deep-dark), var(--deep)); color: #fff; text-align: center; padding: 96px 0; }
+  .final h2 { margin: 0 auto 14px; color: #fff; }
+  .final h2 em { color: var(--accent); }
+  .final .sub { margin: 0 auto 32px; color: var(--on-deep-soft); }
 
-  footer { border-top: 1px solid var(--border); padding: 34px 0 46px; color: var(--muted); font-size: 13px; }
-  footer .wrap { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+  footer { background: var(--deep-dark); color: var(--slate); padding: 40px 0 48px; font-size: 13px; }
+  footer .wrap { display: flex; justify-content: space-between; gap: 32px; flex-wrap: wrap; }
+  footer img { display: block; height: 30px; width: auto; margin-bottom: 14px; }
   footer p { margin: 4px 0; max-width: 560px; }
+  footer a { color: var(--accent-soft); }
+  footer a:hover { color: #fff; }
 
   @media (max-width: 900px) {
     .hero-grid, .cards, .steps, .who { grid-template-columns: 1fr; }
-    h1 { font-size: 46px; } h2 { font-size: 36px; }
     .links { display: none; }
+    .hero { padding: 64px 0 56px; }
   }
 </style>
 </head>
@@ -105,101 +114,113 @@
 
 <nav class="top">
   <div class="wrap">
-    <a href="#" class="logo">equanima<i>.</i></a>
+    <a href="#" class="logo" aria-label="Equanima Securities"><img src="logo-equanima-blanco.svg" alt="Equanima Securities"></a>
     <div class="links">
-      <a href="#solucion">Solución</a>
+      <a href="#que-ves">Qué ves</a>
       <a href="#como-funciona">Cómo funciona</a>
       <a href="#quienes">Para quién</a>
+      <a href="https://equanimasecurities.com/" target="_blank" rel="noopener">equanimasecurities.com</a>
     </div>
-    <a class="btn btn-ghost" href="app.html">Iniciar sesión</a>
+    <a class="btn btn-ghost" href="app.html">Acceso clientes</a>
   </div>
 </nav>
 
 <header class="hero">
   <div class="wrap hero-grid">
     <div>
-      <h1>Las carteras de tus comitentes, <em>en un solo lugar.</em></h1>
-      <p class="lead">La plataforma de Equanima para ver posiciones, cauciones y rendimiento de cada cuenta, en pesos y en dólares, con los datos de Gallo.</p>
+      <div class="eyebrow">Tu cuenta comitente</div>
+      <h1>Tu cartera, <em>en un solo lugar.</em></h1>
+      <p class="lead">Seguí tus posiciones, tu rendimiento y tus movimientos en pesos y en dólares, con los datos de tu cuenta en Equanima Securities y actualizados al momento.</p>
       <div class="cta-row">
-        <a class="btn btn-primary" href="app.html">Iniciar sesión →</a>
-        <a class="btn btn-ghost" href="#solucion">Qué hace</a>
+        <a class="btn btn-primary" href="app.html">Ingresar a mi cuenta →</a>
+        <a class="btn btn-ghost" href="#que-ves">Qué vas a ver</a>
       </div>
       <div class="badges">
-        <span>Datos de Gallo</span>
-        <span>Solo lectura</span>
-        <span>Cada productor ve solo sus comitentes</span>
+        <span>Datos de tu cuenta en Equanima</span>
+        <span>Pesos y dólares</span>
+        <span>Se actualiza cuando operás</span>
       </div>
     </div>
 
     <div class="mock" aria-hidden="true">
       <div class="mock-head"><span>Cartera de ejemplo</span><span class="live">En línea</span></div>
-      <div class="mock-title">Capital actual</div>
+      <div class="mock-title">Valor del portafolio</div>
       <div class="mock-big">USD 1.250.000</div>
       <svg viewBox="0 0 300 70" width="100%" height="70" preserveAspectRatio="none">
-        <path d="M0,58 L30,52 L60,56 L90,40 L120,44 L150,30 L180,34 L210,22 L240,26 L270,12 L300,16" fill="none" stroke="#0ea5e9" stroke-width="2.5"/>
-        <path d="M0,58 L30,52 L60,56 L90,40 L120,44 L150,30 L180,34 L210,22 L240,26 L270,12 L300,16 L300,70 L0,70 Z" fill="rgba(14,165,233,.12)"/>
+        <path d="M0,58 L30,52 L60,56 L90,40 L120,44 L150,30 L180,34 L210,22 L240,26 L270,12 L300,16" fill="none" stroke="#4ab0ce" stroke-width="2.5"/>
+        <path d="M0,58 L30,52 L60,56 L90,40 L120,44 L150,30 L180,34 L210,22 L240,26 L270,12 L300,16 L300,70 L0,70 Z" fill="rgba(74,176,206,.14)"/>
       </svg>
       <div class="mock-grid">
-        <div class="mini"><small>Resultado</small><b class="pos">+4,8%</b></div>
-        <div class="mini"><small>Caución tomada</small><b>USD 420.000</b></div>
-        <div class="mini"><small>Apalancamiento</small><b>1,3 veces</b></div>
-        <div class="mini"><small>Dólar de equilibrio</small><b>$ 1.630</b></div>
+        <div class="mini"><small>Resultado del año</small><b class="pos">+4,8%</b></div>
+        <div class="mini"><small>Dividendos y rentas</small><b>USD 18.400</b></div>
+        <div class="mini"><small>Posiciones abiertas</small><b>12</b></div>
+        <div class="mini"><small>Próximo pago</small><b>15 nov</b></div>
       </div>
       <div class="mock-note">Vista de ejemplo, con números ilustrativos.</div>
     </div>
   </div>
 </header>
 
-<section id="solucion">
+<section id="que-ves">
   <div class="wrap">
-    <div class="eyebrow">Solución</div>
-    <h2>Para qué sirve, <em>en cuatro cosas.</em></h2>
-    <p class="sub">Todo lo que antes había que armar a mano con extractos y planillas, calculado a partir de los movimientos de cada cuenta.</p>
+    <div class="eyebrow">Qué ves</div>
+    <h2>Todo lo de tu cuenta, <em>claro y al día.</em></h2>
+    <p class="sub">Lo que antes había que armar a mano con extractos y planillas, calculado a partir de los movimientos reales de tu cuenta.</p>
     <div class="cards">
       <div class="card">
         <div class="n">01</div>
-        <h3>Cartera</h3>
-        <p>Posiciones al día de cada comitente, con su valor en pesos y en dólares, la composición y lo que está ganando o perdiendo contra su costo.</p>
+        <h3>Portafolio</h3>
+        <p>Tus posiciones con precio actual, precio promedio de compra, valor y resultado, en pesos y en dólares MEP y cable.</p>
       </div>
       <div class="card">
         <div class="n">02</div>
-        <h3>Cauciones y financiamiento</h3>
-        <p>Cuánto debe cada cuenta en pesos y en dólares, el interés que se devenga y cuánto está apalancada.</p>
+        <h3>Rendimiento</h3>
+        <p>Lo ganado por ventas, los dividendos y rentas cobrados y el costo de las cauciones, en el período que elijas.</p>
       </div>
       <div class="card">
         <div class="n">03</div>
-        <h3>Rendimiento real en dólares</h3>
-        <p>Con cuánto empezó, cuánto tiene hoy y cuánto ganó, descontando aportes, retiros y el costo de la caución, al dólar MEP de cada día.</p>
+        <h3>Actividad</h3>
+        <p>Cada compra, venta, depósito y retiro, con filtros por tipo, activo y fechas. Las operaciones de hoy aparecen enseguida.</p>
       </div>
       <div class="card">
         <div class="n">04</div>
-        <h3>Carry trade</h3>
-        <p>Para las letras en pesos financiadas con dólares: la ganancia en dólares y el dólar de equilibrio, para ver cuánto margen hay antes del techo de la banda.</p>
+        <h3>Calendario de pagos</h3>
+        <p>Los cupones y amortizaciones de tus bonos y obligaciones negociables, día por día y mes por mes.</p>
+      </div>
+      <div class="card">
+        <div class="n">05</div>
+        <h3>Mercado</h3>
+        <p>Cotizaciones de acciones, CEDEARs, bonos, dólar y cripto, con gráficos y el mapa del S&amp;P 500.</p>
+      </div>
+      <div class="card">
+        <div class="n">06</div>
+        <h3>Fondos comunes</h3>
+        <p>El ranking de rendimiento de los fondos comunes de inversión de Argentina, con su ficha y su historia.</p>
       </div>
     </div>
   </div>
 </section>
 
-<section id="como-funciona" style="background: var(--bg-soft);">
+<section id="como-funciona" class="alt">
   <div class="wrap">
     <div class="eyebrow">Cómo funciona</div>
     <h2>Entrás y <em>está todo ahí.</em></h2>
-    <p class="sub">No hay nada que instalar ni conectar: la plataforma lee los datos que ya están en Gallo.</p>
+    <p class="sub">No hay nada que instalar: la plataforma lee los datos de tu cuenta comitente.</p>
     <div class="steps">
       <div class="step">
-        <div class="n">1</div>
-        <h3>Iniciás sesión</h3>
-        <p>Con tu usuario de productor. Ves únicamente los comitentes que Gallo te tiene asignados.</p>
+        <div class="n">01</div>
+        <h3>Ingresás con tu mail</h3>
+        <p>Con el mail que tenés registrado en Equanima. Ves únicamente tus cuentas.</p>
       </div>
       <div class="step">
-        <div class="n">2</div>
-        <h3>Elegís una cuenta</h3>
-        <p>Cartera, cauciones, rendimiento y carry trade de ese comitente, o el resumen de todos tus clientes juntos.</p>
+        <div class="n">02</div>
+        <h3>Elegís qué mirar</h3>
+        <p>Portafolio, rendimiento, actividad o calendario, en pesos o en dólares MEP o CCL.</p>
       </div>
       <div class="step">
-        <div class="n">3</div>
-        <h3>Cargás su historial</h3>
-        <p>Subís el Activity de Gallo del comitente y la plataforma reconstruye sus ganancias realizadas y las contrasta con la tenencia actual.</p>
+        <div class="n">03</div>
+        <h3>Se actualiza solo</h3>
+        <p>Cuando operás, la plataforma lo detecta en segundos y actualiza tu posición y tu historial.</p>
       </div>
     </div>
   </div>
@@ -208,18 +229,18 @@
 <section id="quienes">
   <div class="wrap">
     <div class="eyebrow">Para quién</div>
-    <h2>Hoy para productores. <em>Mañana para cada cliente.</em></h2>
-    <p class="sub">Empezamos por el equipo de Equanima. Más adelante, cada cliente va a poder entrar con el mismo mail que tiene en Gallo y ver solo su cartera.</p>
+    <h2>Para cada cliente <em>y para su manager.</em></h2>
+    <p class="sub">Cada persona ve lo suyo: el cliente su cuenta y el manager la cartera de sus clientes.</p>
     <div class="who">
       <div class="card">
-        <span class="tag">Disponible</span>
-        <h3>Productores</h3>
-        <p>Seguimiento de todos tus comitentes en un solo lugar, con el resultado de cada cuenta y su nivel de endeudamiento.</p>
+        <span class="tag">Clientes</span>
+        <h3>Tu cuenta, de solo lectura</h3>
+        <p>Entrás con tu mail y ves tu portafolio, tu rendimiento, tu actividad y tus próximos pagos.</p>
       </div>
-      <div class="card soon">
-        <span class="tag gris">Próximamente</span>
-        <h3>Clientes</h3>
-        <p>Acceso individual de solo lectura: cada cliente ve su propia cartera, su rendimiento y su historial.</p>
+      <div class="card">
+        <span class="tag">Managers</span>
+        <h3>Toda tu cartera de clientes</h3>
+        <p>El resumen de todos tus clientes, con su resultado, su endeudamiento y el calendario de pagos de sus bonos y ONs, para descargar en Excel o PDF.</p>
       </div>
     </div>
   </div>
@@ -227,20 +248,21 @@
 
 <section class="final">
   <div class="wrap">
-    <h2>Todas las carteras, <em>en un solo lugar.</em></h2>
-    <p class="sub">Entrá con tu usuario de productor.</p>
-    <a class="btn btn-primary" href="app.html">Iniciar sesión →</a>
+    <h2>Tu cartera, <em>siempre al alcance.</em></h2>
+    <p class="sub">Ingresá con tu mail y mirá tu cuenta.</p>
+    <a class="btn btn-primary" href="app.html">Ingresar a mi cuenta →</a>
   </div>
 </section>
 
 <footer>
   <div class="wrap">
     <div>
-      <div class="logo" style="color:var(--text)">equanima<i>.</i></div>
-      <p>Equanima Securities. Agente de Liquidación y Compensación, CNV matrícula N° 191.</p>
+      <img src="logo-equanima-blanco.svg" alt="Equanima Securities">
+      <p>Equanima Securities S.A. · Agente de Liquidación y Compensación Propio, CNV N.º 191.</p>
+      <p><a href="https://equanimasecurities.com/" target="_blank" rel="noopener">equanimasecurities.com</a> · <a href="mailto:info@equanimasecurities.com">info@equanimasecurities.com</a></p>
     </div>
     <div>
-      <p>La información de esta plataforma es de carácter informativo y no constituye asesoramiento financiero ni una oferta de inversión. Los resultados mostrados dependen de los datos disponibles y pueden diferir de los registros oficiales de la sociedad.</p>
+      <p>La información de esta plataforma es de carácter informativo y no constituye asesoramiento financiero ni una oferta de inversión. Los valores mostrados dependen de los datos disponibles y pueden diferir de los registros oficiales de la sociedad.</p>
     </div>
   </div>
 </footer>

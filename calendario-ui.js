@@ -137,7 +137,7 @@ function calDescripcion() {
 // Aplica estilos (colores, negritas, bordes) a una hoja; mismo diseño que el Excel del flujo de fondos de renta fija.
 function calEstiloHoja(ws, o) {
   const rng = XLSX.utils.decode_range(ws["!ref"]);
-  const NAVY = { rgb: "0A1628" }, WHITE = { rgb: "FFFFFF" }, HDR = { rgb: "DCE3F0" }, ALT = { rgb: "F4F7FB" };
+  const NAVY = { rgb: "0E3852" }, WHITE = { rgb: "FFFFFF" }, HDR = { rgb: "D6ECF4" }, ALT = { rgb: "F4F7FB" };
   const bd = { style: "thin", color: { rgb: "D0D7E2" } }, BOX = { top: bd, bottom: bd, left: bd, right: bd };
   const ha = c => ({ l: "left", r: "right", c: "center" }[(o.cols && o.cols[c]) || "left"] || "left");
   for (let R = rng.s.r; R <= rng.e.r; R++) {
@@ -146,7 +146,7 @@ function calEstiloHoja(ws, o) {
       let cell = ws[ref]; if (!cell) { cell = { t: "s", v: "" }; ws[ref] = cell; }
       if (R === o.titleRow) cell.s = { font: { bold: true, color: WHITE, sz: 14 }, fill: { fgColor: NAVY }, alignment: { horizontal: "center", vertical: "center" } };
       else if (R === o.subRow) cell.s = { font: { italic: true, color: WHITE, sz: 10 }, fill: { fgColor: NAVY }, alignment: { horizontal: "center" } };
-      else if (R === o.headRow) cell.s = { font: { bold: true, color: { rgb: "1F2A44" } }, fill: { fgColor: HDR }, alignment: { horizontal: ha(C), vertical: "center" }, border: BOX };
+      else if (R === o.headRow) cell.s = { font: { bold: true, color: { rgb: "0E3852" } }, fill: { fgColor: HDR }, alignment: { horizontal: ha(C), vertical: "center" }, border: BOX };
       else if (R >= o.totalRow) cell.s = { font: { bold: true, color: WHITE }, fill: { fgColor: NAVY }, alignment: { horizontal: ha(C) } };
       else if (R > o.headRow) { cell.s = { alignment: { horizontal: ha(C) }, border: BOX }; if ((R - o.headRow) % 2 === 0) cell.s.fill = { fgColor: ALT }; }
       if (typeof cell.v === "number" && R > o.headRow && (o.numCols || []).includes(C)) cell.z = "#,##0.00";
@@ -225,7 +225,7 @@ function calExportarPDF() {
     body,
     foot: mons.map(m => [`Total ${m}`, "", "", "", "", calNum(tot[m].interes), calNum(tot[m].amort), calNum(tot[m].total), m]),
     styles: { fontSize: 8, cellPadding: 3, lineColor: [226, 232, 240], lineWidth: 0.4 },
-    headStyles: { fillColor: [10, 22, 40], textColor: 255, fontStyle: "bold" },
+    headStyles: { fillColor: [14, 56, 82], textColor: 255, fontStyle: "bold" },
     footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: "bold" },
     alternateRowStyles: { fillColor: [248, 250, 252] },
     columnStyles: { 4: { halign: "right" }, 5: { halign: "right" }, 6: { halign: "right" }, 7: { halign: "right" }, 8: { halign: "center" } },

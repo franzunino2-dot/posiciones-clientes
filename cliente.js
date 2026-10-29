@@ -14,7 +14,7 @@ let PAGOS = null;            // { bonistas: { SIMBOLO: [[fecha, cupon, amort, mo
 let PAGOS_ESTADO = "pendiente"; // pendiente | cargando | listo | error
 
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-const PALETA = ["#0ea5e9", "#6366f1", "#14b8a6", "#f59e0b", "#ec4899", "#84cc16", "#f97316", "#8b5cf6", "#64748b"];
+const PALETA = ["#0e3852", "#4ab0ce", "#221d58", "#17567a", "#93a3b0", "#b3dcea", "#7a8cc7", "#44606e", "#c7d9ff"]; // paleta de marca Equanima
 
 function esc(s) {
   return String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -207,7 +207,7 @@ function abrirVistaCliente(id, staff) {
   ACT = null; ACT_ESTADO = "pendiente";
   document.getElementById("app").style.display = "none";
   document.getElementById("clienteApp").style.display = "block";
-  document.body.style.background = "#f4f6fa";
+  document.body.style.background = "#edf1f4";
   window.scrollTo(0, 0);
   cargarPagosCliente();
   cargarActividadCliente();
@@ -259,7 +259,7 @@ function renderCliente() {
     ${!clienteVista.staff && sesion && sesion.rolReal === "alyc" ? `<div class="cv-staff">Estás viendo la plataforma como cliente: ${esc(sesion.perfilNombre || "")} · <button onclick="cambiarPerfil()">Cambiar perfil</button></div>` : ""}
     ${clienteVista.staff ? `<div class="cv-staff">Estás viendo la cuenta como la ve el cliente · <button onclick="cerrarVistaCliente()">← Volver al panel</button></div>` : ""}
     <header class="cv-head">
-      <a class="cv-brand" href="#" onclick="cvTab('inicio'); return false" aria-label="Equanima Securities, ir al inicio"><img src="logo-equanima.png" alt="Equanima Securities"></a>
+      <a class="cv-brand" href="#" onclick="cvTab('inicio'); return false" aria-label="Equanima Securities, ir al inicio"><img src="logo-equanima-blanco.svg" alt="Equanima Securities"></a>
       ${!clienteVista.staff && sesion && sesion.comitenteIds && sesion.comitenteIds.length > 1 ? `<select class="cv-cta" onchange="abrirVistaCliente(this.value, false)" aria-label="Cuenta">${sesion.comitenteIds.map(id => { const c = getClientes().find(x => x.id === id); return `<option value="${esc(id)}" ${id === clienteVista.id ? "selected" : ""}>${esc(id)}${c ? " · " + esc(titulo(c.nombre || "")) : ""}</option>`; }).join("")}</select>` : ""}
       <nav class="cv-tabs">${tabs.map(([k, n]) => `<button class="${clienteVista.tab === k ? "on" : ""}" ${clienteVista.tab === k ? "aria-current=\"page\"" : ""} onclick="cvTab('${k}')">${n}</button>`).join("")}</nav>
       <div class="cv-right">
