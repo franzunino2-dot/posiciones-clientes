@@ -609,6 +609,18 @@
   .ml-mgrs { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 6px 14px; }
   .ml-chk { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
   .ml-chk input { width: auto; padding: 0; }
+  .ml-dos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  @media (max-width: 700px) { .ml-dos { grid-template-columns: 1fr; } }
+  .ml-dos input, .ml-dos select { width: 100%; min-width: 0; background: var(--bg-card2); color: var(--text); border: 1px solid var(--border); border-radius: var(--r); padding: 9px 12px; font: inherit; font-size: 14px; }
+  .ml-sub { margin: 18px 0 8px; font-family: var(--mono, monospace); font-size: 11px; letter-spacing: .12em; color: var(--text-dim, #93a3b0); font-weight: 500; }
+  .ml-res { max-height: 260px; overflow: auto; border: 1px solid var(--border); border-radius: var(--r); margin-top: 8px; }
+  .ml-fila { display: flex; align-items: center; gap: 10px; padding: 7px 12px; font-size: 13px; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .ml-fila:last-child { border-bottom: none; }
+  .ml-fila input { width: auto; padding: 0; }
+  .ml-fila .ml-n { font-weight: 600; flex: 0 1 auto; }
+  .ml-fila .mk-nota { margin-left: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ml-x { margin-left: auto; background: none; border: none; color: var(--text-dim, #93a3b0); font-size: 16px; line-height: 1; cursor: pointer; padding: 0 4px; }
+  .ml-x:hover { color: var(--neg, #e5484d); }
   .ml-confirma { border: 1px solid var(--accent); border-radius: var(--r); padding: 14px; background: #0e385244; }
   button:disabled { opacity: .4; cursor: not-allowed; }
   /* Controles nativos (barras de desplazamiento, calendarios de fecha) acordes a cada tema. */

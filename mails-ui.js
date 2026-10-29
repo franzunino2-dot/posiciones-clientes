@@ -1,18 +1,33 @@
 // Panel ALyC > Mails a clientes: redactar con IA, previsualizar, probar y enviar. Ver mails.js (servidor).
 
-const ML = { estado: null, dest: null, managers: [], sel: new Set(), asunto: "", cuerpo: "", instr: "", redactando: false, msg: "", msgOk: true, prueba: "", envios: [], confirmando: false, vistaTimer: null, pollTimer: null };
+const ML = {
+  estado: null, dest: null, managers: [], grupos: [],
+  sel: new Set(), indiv: new Set(), gsel: new Set(), busca: "", res: [], gnombre: "",
+  asunto: "", titulo: "", segmento: "", cuerpo: "", botonTexto: "", botonUrl: "", instr: "",
+  redactando: false, msg: "", msgOk: true, prueba: "", envios: [], confirmando: false, vistaTimer: null, pollTimer: null,
+};
+const ML_SEGMENTOS = ["Empresas", "Financiamiento PyME", "Banca Privada", "Institucionales"];
 const mlAuth = () => ({ Authorization: "Bearer " + sesion.token, "Content-Type": "application/json" });
 const mlEsc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const mlNorm = s => String(s == null ? "" : s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
-async function mlApi(ruta, cuerpo) {
-  const r = await fetch("/api/mails/" + ruta, cuerpo === undefined ? { headers: mlAuth() } : { method: "POST", headers: mlAuth(), body: JSON.stringify(cuerpo) });
+async function mlApi(ruta, cuerpo, metodo) {
+  const r = await fetch("/api/mails/" + ruta, cuerpo === undefined && !metodo ? { headers: mlAuth() } : { method: metodo || "POST", headers: mlAuth(), body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo) });
   return r.json();
 }
 
-// Destinatarios según los managers tildados (ninguno tildado = todos). Sin los dados de baja ni los mails inválidos.
+// Los campos del mail tal como los espera el servidor.
+const mlMail = () => ({ asunto: ML.asunto, titulo: ML.titulo, segmento: ML.segmento, cuerpo: ML.cuerpo, botonTexto: ML.botonTexto, botonUrl: ML.botonUrl });
+const mlHayFiltro = () => ML.sel.size || ML.indiv.size || ML.gsel.size;
+const mlMailsDeGrupos = () => { const s = new Set(); ML.grupos.filter(g => ML.gsel.has(g.id)).forEach(g => g.emails.forEach(e => s.add(e))); return s; };
+
+// Destinatarios: la unión de los managers, los grupos y los clientes elegidos a mano (nada elegido = todos).
+// Siempre sin los dados de baja ni los mails inválidos.
 function mlLista() {
   const base = (ML.dest || []).filter(d => d.valido && !d.baja);
-  return ML.sel.size ? base.filter(d => d.managers.some(m => ML.sel.has(m))) : base;
+  if (!mlHayFiltro()) return base;
+  const delGrupo = mlMailsDeGrupos();
+  return base.filter(d => d.managers.some(m => ML.sel.has(m)) || ML.indiv.has(d.email) || delGrupo.has(d.email));
 }
 
 async function renderMails() {
@@ -20,17 +35,39 @@ async function renderMails() {
   if (!ML.estado) {
     el.innerHTML = `<div class="mk-cab"><div><span class="mk-sup">PANEL ALYC</span><h1>Mails a clientes</h1></div></div><p class="mk-vacio">Cargando…</p>`;
     try {
-      const [e, d] = await Promise.all([mlApi("estado"), mlApi("destinatarios")]);
+      const [e, d, g] = await Promise.all([mlApi("estado"), mlApi("destinatarios"), mlApi("grupos")]);
       if (!e.ok || !d.ok) throw new Error(e.error || d.error);
-      ML.estado = e; ML.dest = d.destinatarios; ML.managers = d.managers;
+      ML.estado = e; ML.dest = d.destinatarios; ML.managers = d.managers; ML.grupos = g.ok ? g.grupos : [];
       mlEnvios();
     } catch (err) { el.innerHTML += `<p class="mk-vacio">No se pudo cargar: ${mlEsc(err.message)}</p>`; return; }
   }
   mlPintar();
 }
 
+// Resultados del buscador: por nombre, mail, número de cuenta o manager.
+function mlBuscarLista() {
+  const q = mlNorm(ML.busca).trim();
+  if (q.length < 2) return [];
+  const mgr = Object.fromEntries(ML.managers.map(m => [m.codigo, mlNorm(m.nombre)]));
+  const partes = q.split(/\s+/);
+  return (ML.dest || []).filter(d => d.valido && !d.baja).filter(d => {
+    const pajar = mlNorm(d.nombre + " " + d.email + " " + d.cuentas.join(" ") + " " + d.managers.map(m => mgr[m] || "").join(" "));
+    return partes.every(p => pajar.includes(p));
+  });
+}
+
+function mlHtmlResultados() {
+  if (mlNorm(ML.busca).trim().length < 2) return `<p class="mk-nota" style="margin:8px 0 0">Buscá por nombre, mail, número de cuenta o manager. Tildá los que quieras y guardalos como grupo.</p>`;
+  const todos = mlBuscarLista(); ML.res = todos.slice(0, 40);
+  if (!todos.length) return `<p class="mk-nota" style="margin:8px 0 0">No hay clientes con esa búsqueda.</p>`;
+  const todosElegidos = todos.every(d => ML.indiv.has(d.email));
+  return `<div class="mk-pills" style="margin:8px 0 0"><button onclick="mlElegirResultados(${todosElegidos ? "false" : "true"})">${todosElegidos ? "Quitar" : "Elegir"} los ${todos.length} resultados</button><span class="mk-nota">${todos.length > 40 ? "Se muestran 40: afinó la búsqueda para ver el resto." : ""}</span></div>
+    <div class="ml-res">${ML.res.map((d, i) => `<label class="ml-fila"><input type="checkbox" ${ML.indiv.has(d.email) ? "checked" : ""} onchange="mlIndiv(${i}, this.checked)"><span class="ml-n">${mlEsc(d.nombre || "(sin nombre)")}</span><span class="mk-nota">${mlEsc(d.email)} · cta ${mlEsc(d.cuentas.slice(0, 3).join(", "))}${d.cuentas.length > 3 ? "…" : ""}</span></label>`).join("")}</div>`;
+}
+
 function mlPintar() {
   const el = document.getElementById("view-mails");
+  const y = window.scrollY;
   const e = ML.estado, lista = mlLista();
   const puede = e.smtp;
   const cuentas = lista.reduce((a, d) => a + d.cuentas.length, 0);
@@ -49,20 +86,39 @@ function mlPintar() {
             <button class="on" onclick="mlRedactar()" ${ML.redactando || !e.ia ? "disabled" : ""}>${ML.redactando ? "Redactando…" : (ML.cuerpo ? "Mejorar con IA" : "Redactar con IA")}</button>
             ${e.ia ? "" : `<span class="mk-nota">Sin la clave de IA podés escribir el mail a mano.</span>`}
           </div>
+          <p class="mk-nota" style="margin:8px 0 0">La IA sigue la guía de piezas de Equanima: voz de Securities, sin recomendaciones ni datos inventados. Lo que no le contás queda como TBD para que lo completes.</p>
         </section>
         <section class="mk-card">
           <h3>2 · EL MAIL</h3>
-          <input id="mlAsunto" type="text" style="width:100%;margin-bottom:10px" placeholder="Asunto" maxlength="120" value="${mlEsc(ML.asunto)}" oninput="ML.asunto=this.value; mlVista()">
+          <input id="mlAsunto" type="text" style="width:100%;margin-bottom:10px" placeholder="Asunto (lo que se ve en la bandeja)" maxlength="120" value="${mlEsc(ML.asunto)}" oninput="ML.asunto=this.value; mlVista()">
+          <div class="ml-dos">
+            <input id="mlTitulo" type="text" placeholder="Título dentro del mail (si lo dejás vacío, el asunto)" maxlength="100" value="${mlEsc(ML.titulo)}" oninput="ML.titulo=this.value; mlVista()">
+            <select id="mlSegmento" onchange="ML.segmento=this.value; mlVista()"><option value="">Sin segmento (comunicación regular)</option>${ML_SEGMENTOS.map(s => `<option ${ML.segmento === s ? "selected" : ""}>${s}</option>`).join("")}</select>
+          </div>
           <textarea id="mlCuerpo" rows="11" placeholder="Escribí el texto. Separá los párrafos con una línea en blanco. No hace falta el saludo ni la firma: se agregan solos." oninput="ML.cuerpo=this.value; mlVista()">${mlEsc(ML.cuerpo)}</textarea>
-          <p class="mk-nota">Se agrega solo: saludo ("Hola Nombre," cuando se conoce el nombre), firma de Equanima Securities y el pie legal con la opción de baja.</p>
+          <p class="mk-nota">Para una lista, empezá cada línea con "- ". Para resaltar una frase clave, ponela entre **dos asteriscos**.</p>
+          <div class="ml-dos" style="margin-top:10px">
+            <input id="mlBotonTexto" type="text" placeholder="Botón (opcional): texto, ej. Coordinar una reunión" maxlength="60" value="${mlEsc(ML.botonTexto)}" oninput="ML.botonTexto=this.value; mlVista()">
+            <input id="mlBotonUrl" type="text" placeholder="Link del botón (vacío: mail de Equanima)" value="${mlEsc(ML.botonUrl)}" oninput="ML.botonUrl=this.value; mlVista()">
+          </div>
+          <p class="mk-nota">Se agrega solo: saludo ("Hola, Nombre:" cuando se conoce el nombre), firma, pie legal de Equanima Securities y la opción de baja.</p>
         </section>
         <section class="mk-card">
           <h3>3 · A QUIÉN</h3>
           <div class="ml-mgrs">
-            <label class="ml-chk"><input type="checkbox" ${ML.sel.size ? "" : "checked"} onchange="mlTodos()"> <b>Todos los clientes</b></label>
+            <label class="ml-chk"><input type="checkbox" ${mlHayFiltro() ? "" : "checked"} onchange="mlTodos()"> <b>Todos los clientes</b></label>
             ${ML.managers.map(m => { const n = (ML.dest || []).filter(d => d.valido && !d.baja && d.managers.includes(m.codigo)).length; return `<label class="ml-chk"><input type="checkbox" ${ML.sel.has(m.codigo) ? "checked" : ""} onchange="mlManager('${mlEsc(m.codigo)}', this.checked)"> ${mlEsc(m.nombre)} <span class="mk-nota">${n}</span></label>`; }).join("")}
           </div>
-          <p style="margin:12px 0 0;font-size:15px"><b>${lista.length}</b> mails distintos <span class="mk-nota">· ${cuentas} cuentas${e.destinatarios.bajas ? ` · ${e.destinatarios.bajas} dados de baja excluidos` : ""}${e.destinatarios.invalidos ? ` · ${e.destinatarios.invalidos} mails inválidos excluidos` : ""}</span></p>
+          ${ML.grupos.length ? `<h4 class="ml-sub">MIS GRUPOS</h4><div class="ml-mgrs">${ML.grupos.map(g => `<label class="ml-chk"><input type="checkbox" ${ML.gsel.has(g.id) ? "checked" : ""} onchange="mlGrupo('${mlEsc(g.id)}', this.checked)"> ${mlEsc(g.nombre)} <span class="mk-nota">${g.emails.length}</span><button class="ml-x" title="Borrar el grupo" onclick="event.preventDefault(); mlBorrarGrupo('${mlEsc(g.id)}')">×</button></label>`).join("")}</div>` : ""}
+          <h4 class="ml-sub">BUSCAR CLIENTES</h4>
+          <input id="mlBusca" type="search" style="width:100%" placeholder="Nombre, mail, número de cuenta o manager" value="${mlEsc(ML.busca)}" oninput="mlBuscar(this.value)" autocomplete="off">
+          <div id="mlRes">${mlHtmlResultados()}</div>
+          <p style="margin:14px 0 0;font-size:15px"><b>${lista.length}</b> mails distintos <span class="mk-nota">· ${cuentas} cuentas${ML.indiv.size ? ` · ${ML.indiv.size} elegidos a mano` : ""}${e.destinatarios.bajas ? ` · ${e.destinatarios.bajas} dados de baja excluidos` : ""}${e.destinatarios.invalidos ? ` · ${e.destinatarios.invalidos} mails inválidos excluidos` : ""}</span></p>
+          ${mlHayFiltro() ? `<div class="mk-pills" style="margin:10px 0 0">
+            <input id="mlGrupoNombre" type="text" placeholder="Nombre del grupo" maxlength="60" value="${mlEsc(ML.gnombre)}" oninput="ML.gnombre=this.value" style="min-width:200px">
+            <button onclick="mlGuardarGrupo()" ${lista.length ? "" : "disabled"}>Guardar estos ${lista.length} como grupo</button>
+            <button onclick="mlTodos()">Limpiar selección</button>
+          </div>` : ""}
         </section>
         <section class="mk-card">
           <h3>4 · PROBAR Y ENVIAR</h3>
@@ -87,8 +143,9 @@ function mlPintar() {
         </section>
         ${ML.envios.length ? `<section class="mk-card"><h3>ENVÍOS RECIENTES</h3><div class="table-wrap"><table><thead><tr><th>Asunto</th><th>Estado</th><th>Enviados</th><th>Fallidos</th><th>Inicio</th></tr></thead><tbody>${ML.envios.map(x => `<tr><td>${mlEsc(x.asunto)}</td><td>${x.estado === "enviando" ? "Enviando…" : x.estado === "terminado" ? "Terminado" : "Error"}</td><td>${x.enviados} de ${x.total}</td><td class="${x.fallidos ? "neg" : ""}">${x.fallidos}</td><td>${new Date(x.inicio).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" })}</td></tr>`).join("")}</tbody></table></div></section>` : ""}
       </div>
-      <div class="ml-vista"><section class="mk-card" style="position:sticky;top:12px"><h3>ASÍ LO VA A VER EL CLIENTE</h3><iframe id="mlFrame" title="Vista previa del mail" sandbox="" style="width:100%;height:640px;border:1px solid var(--border);background:#edf1f4"></iframe></section></div>
+      <div class="ml-vista"><section class="mk-card" style="position:sticky;top:12px"><h3>ASÍ LO VA A VER EL CLIENTE</h3><iframe id="mlFrame" title="Vista previa del mail" sandbox="" style="width:100%;height:720px;border:1px solid var(--border);background:#edf1f4"></iframe></section></div>
     </div>`;
+  window.scrollTo(0, y);
   mlVista(true);
 }
 
@@ -96,19 +153,52 @@ function mlVista(ya) {
   clearTimeout(ML.vistaTimer);
   ML.vistaTimer = setTimeout(async () => {
     const f = document.getElementById("mlFrame"); if (!f) return;
-    try { const j = await mlApi("vista", { asunto: ML.asunto, cuerpo: ML.cuerpo || "El texto del mail va a aparecer acá." }); if (j.ok) f.srcdoc = j.html; } catch (e) { /* sin vista */ }
+    try {
+      const m = mlMail(); if (!m.cuerpo) m.cuerpo = "El texto del mail va a aparecer acá.";
+      if (!m.asunto && !m.titulo) m.titulo = "El título del mail";
+      const j = await mlApi("vista", m); if (j.ok) f.srcdoc = j.html;
+    } catch (e) { /* sin vista */ }
   }, ya ? 0 : 450);
 }
 
-function mlTodos() { ML.sel.clear(); mlPintar(); }
+function mlTodos() { ML.sel.clear(); ML.indiv.clear(); ML.gsel.clear(); mlPintar(); }
 function mlManager(cod, on) { if (on) ML.sel.add(cod); else ML.sel.delete(cod); mlPintar(); }
+function mlGrupo(id, on) { if (on) ML.gsel.add(id); else ML.gsel.delete(id); mlPintar(); }
+
+// El buscador solo repinta sus resultados, así no se pierde el foco mientras se escribe.
+function mlBuscar(v) { ML.busca = v; const r = document.getElementById("mlRes"); if (r) r.innerHTML = mlHtmlResultados(); }
+function mlIndiv(i, on) { const d = ML.res[i]; if (!d) return; if (on) ML.indiv.add(d.email); else ML.indiv.delete(d.email); mlPintar(); }
+function mlElegirResultados(on) { mlBuscarLista().forEach(d => { if (on) ML.indiv.add(d.email); else ML.indiv.delete(d.email); }); mlPintar(); }
+
+async function mlGuardarGrupo() {
+  const emails = mlLista().map(d => d.email);
+  try {
+    const j = await mlApi("grupos", { nombre: ML.gnombre, emails });
+    if (j.ok) {
+      ML.grupos = j.grupos; ML.sel.clear(); ML.indiv.clear(); ML.gsel = new Set([j.grupo.id]); ML.gnombre = "";
+      ML.msg = `Grupo "${j.grupo.nombre}" guardado con ${j.grupo.emails.length} mails. Ya lo podés elegir cuando quieras.`; ML.msgOk = true;
+    } else { ML.msg = j.error; ML.msgOk = false; }
+  } catch (e) { ML.msg = "No se pudo guardar el grupo: " + e.message; ML.msgOk = false; }
+  mlPintar();
+}
+
+async function mlBorrarGrupo(id) {
+  const g = ML.grupos.find(x => x.id === id); if (!g || !confirm(`¿Borrar el grupo "${g.nombre}"? Los clientes no se tocan, solo la lista.`)) return;
+  try {
+    const j = await mlApi("grupos/" + encodeURIComponent(id), undefined, "DELETE");
+    if (j.ok) { ML.grupos = j.grupos; ML.gsel.delete(id); } else { ML.msg = j.error; ML.msgOk = false; }
+  } catch (e) { ML.msg = "No se pudo borrar el grupo: " + e.message; ML.msgOk = false; }
+  mlPintar();
+}
 
 async function mlRedactar() {
   ML.redactando = true; ML.msg = ""; mlPintar();
   try {
-    const j = await mlApi("redactar", { instruccion: ML.instr, borrador: ML.cuerpo ? `Asunto: ${ML.asunto}\n\n${ML.cuerpo}` : "" });
-    if (j.ok) { ML.asunto = j.asunto; ML.cuerpo = j.cuerpo; ML.msg = "Listo el borrador. Revisalo y editá lo que haga falta antes de enviar."; ML.msgOk = true; }
-    else { ML.msg = j.error; ML.msgOk = false; }
+    const j = await mlApi("redactar", { instruccion: ML.instr, borrador: ML.cuerpo ? `Asunto: ${ML.asunto}\nTítulo: ${ML.titulo}\n\n${ML.cuerpo}` : "" });
+    if (j.ok) {
+      ML.asunto = j.asunto; ML.titulo = j.titulo; ML.segmento = ML_SEGMENTOS.includes(j.segmento) ? j.segmento : ""; ML.cuerpo = j.cuerpo; ML.botonTexto = j.botonTexto; ML.botonUrl = j.botonUrl;
+      ML.msg = /\bTBD\b/.test(j.cuerpo + j.titulo + j.asunto) ? "Listo el borrador, pero hay datos marcados TBD que faltan: completalos antes de enviar." : "Listo el borrador. Revisalo y editá lo que haga falta antes de enviar."; ML.msgOk = true;
+    } else { ML.msg = j.error; ML.msgOk = false; }
   } catch (e) { ML.msg = "No se pudo redactar: " + e.message; ML.msgOk = false; }
   ML.redactando = false; mlPintar();
 }
@@ -116,7 +206,7 @@ async function mlRedactar() {
 async function mlProbar() {
   ML.msg = ""; ML.msgOk = true;
   try {
-    const j = await mlApi("prueba", { asunto: ML.asunto, cuerpo: ML.cuerpo, a: ML.prueba });
+    const j = await mlApi("prueba", { ...mlMail(), a: ML.prueba });
     ML.msg = j.ok ? `Prueba enviada a ${j.enviado}. Revisá la bandeja de entrada (y el spam).` : j.error; ML.msgOk = !!j.ok;
   } catch (e) { ML.msg = "No se pudo enviar la prueba: " + e.message; ML.msgOk = false; }
   mlPintar();
@@ -124,6 +214,7 @@ async function mlProbar() {
 
 function mlPedirConfirmacion() {
   if (!ML.asunto.trim() || !ML.cuerpo.trim()) { ML.msg = "Falta el asunto o el texto del mail."; ML.msgOk = false; mlPintar(); return; }
+  if (/\bTBD\b/.test([ML.asunto, ML.titulo, ML.cuerpo, ML.botonTexto].join(" "))) { ML.msg = "El mail todavía tiene un TBD: falta completar un dato. Reemplazalo antes de enviar."; ML.msgOk = false; mlPintar(); return; }
   ML.msg = ""; ML.confirmando = true; mlPintar();
   setTimeout(() => { const i = document.getElementById("mlConfirmar"); if (i) i.focus(); }, 50);
 }
@@ -131,7 +222,8 @@ function mlPedirConfirmacion() {
 async function mlEnviar() {
   const n = (document.getElementById("mlConfirmar") || {}).value;
   try {
-    const j = await mlApi("enviar", { asunto: ML.asunto, cuerpo: ML.cuerpo, managers: [...ML.sel], confirmar: Number(n) });
+    // Se manda la lista ya resuelta (managers, grupos y elegidos a mano), el servidor la vuelve a filtrar por bajas y validez.
+    const j = await mlApi("enviar", { ...mlMail(), emails: mlHayFiltro() ? mlLista().map(d => d.email) : undefined, confirmar: Number(n) });
     if (j.ok) { ML.msg = `Envío iniciado a ${j.total} mails. Sale por tandas: podés seguir el avance abajo.`; ML.msgOk = true; ML.confirmando = false; mlEnvios(); }
     else { ML.msg = j.error; ML.msgOk = false; }
   } catch (e) { ML.msg = "No se pudo iniciar el envío: " + e.message; ML.msgOk = false; }
@@ -141,5 +233,5 @@ async function mlEnviar() {
 async function mlEnvios() {
   try { const j = await mlApi("envios"); if (j.ok) ML.envios = j.envios; } catch (e) { /* sin lista */ }
   clearTimeout(ML.pollTimer);
-  if (ML.envios.some(x => x.estado === "enviando")) ML.pollTimer = setTimeout(async () => { await mlEnvios(); if (vistaActual === "mails" && !ML.confirmando) { const a = document.activeElement; if (!a || !/^(INPUT|TEXTAREA)$/.test(a.tagName)) mlPintar(); } }, 3000);
+  if (ML.envios.some(x => x.estado === "enviando")) ML.pollTimer = setTimeout(async () => { await mlEnvios(); if (vistaActual === "mails" && !ML.confirmando) { const a = document.activeElement; if (!a || !/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) mlPintar(); } }, 3000);
 }

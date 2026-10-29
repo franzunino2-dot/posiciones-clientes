@@ -20,7 +20,14 @@ const nodemailer = require('nodemailer');
 const DIR = path.join(__dirname, 'mercado');
 const LOG = path.join(DIR, 'mails-envios.jsonl');
 const BAJAS = path.join(DIR, 'mails-baja.json');
-const LOGO = path.join(__dirname, 'logo-equanima.png');
+const GRUPOS = path.join(DIR, 'mails-grupos.json');
+// Imágenes del mail (PNG de alta resolución de la marca): viajan como adjuntos en línea (cid) y en la vista previa van incrustadas.
+const IMAGENES = {
+  'logo-blanco': path.join(__dirname, 'mail-logo-blanco.png'),
+  'delta-blanco': path.join(__dirname, 'mail-delta-blanco.png'),
+  'delta': path.join(__dirname, 'mail-delta.png'),
+};
+const MAIL_INFO = 'info@equanimasecurities.com';
 const MODELO_IA = process.env.MAIL_MODELO_IA || 'claude-sonnet-5-5';
 
 const cfg = () => ({
@@ -55,38 +62,102 @@ function leerBajas() { try { return new Set(JSON.parse(fs.readFileSync(BAJAS, 'u
 function guardarBajas(set) { fs.mkdirSync(DIR, { recursive: true }); fs.writeFileSync(BAJAS, JSON.stringify([...set].sort())); }
 
 // ---------- Plantilla ----------
-function htmlMail({ asunto, cuerpo, saludo }) {
-  const parrafos = String(cuerpo || '').split(/\n{2,}/).map(p => p.trim()).filter(Boolean)
-    .map(p => `<p style="margin:0 0 16px;font-size:16px;line-height:1.55;color:#0e3852">${esc(p).replace(/\n/g, '<br>')}</p>`).join('');
-  return `<!doctype html><html lang="es"><body style="margin:0;padding:0;background:#edf1f4;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif">
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#edf1f4"><tr><td align="center" style="padding:24px 12px">
-<table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width:600px;width:100%;background:#ffffff;border-top:4px solid #0e3852">
-<tr><td style="padding:28px 36px 8px"><img src="cid:logo-equanima" width="170" alt="Equanima Securities" style="display:block;border:0"></td></tr>
-<tr><td style="padding:20px 36px 8px">
-<p style="margin:0 0 18px;font-size:20px;font-weight:300;color:#0e3852">${esc(saludo)}</p>
-${parrafos}
-<p style="margin:24px 0 0;font-size:16px;color:#0e3852">Un saludo,<br><strong>Equanima Securities</strong></p>
-</td></tr>
-<tr><td style="padding:28px 36px 30px"><div style="border-top:1px solid #dbe3e8;padding-top:16px;font-size:12px;line-height:1.5;color:#5b7584">
-Equanima Securities S.A. · Agente de Liquidación y Compensación Propio, CNV N.º 191.<br>
-Recibís este mail porque sos cliente de Equanima Securities. Si no querés recibir más comunicaciones, respondé este mail con la palabra BAJA.<br>
-La información de este mensaje es de carácter informativo y no constituye asesoramiento financiero ni una oferta de inversión.
-</div></td></tr></table></td></tr></table></body></html>`;
+// Mail HTML de Equanima Securities, construido sobre las plantillas de mail del grupo (comunicación regular y comercial):
+// banda petróleo con el lockup y el delta, título, texto, lista opcional sobre reglas finas, botón opcional, firma con delta y
+// pie legal fijo. Estilos en línea y tablas (lo que exigen Gmail y Outlook). Los bloques legales son fijos: no los toca la IA.
+const C = { deep: '#0E3852', dark: '#082740', muted: '#44606E', soft: '#B3DCEA', line: '#D8DFE4', alt: '#EDF1F4' };
+const FUENTE = 'Helvetica, Arial, sans-serif';
+
+// La IA y quien escribe pueden marcar con **doble asterisco** una frase clave por párrafo.
+const inline = s => esc(s).replace(/\*\*(.+?)\*\*/g, `<strong style="color:${C.deep}">$1</strong>`);
+
+// Sin guion largo ni medio (regla de estilo de Equanima): entre números es "a", en el resto una coma.
+const sinGuionLargo = s => String(s == null ? '' : s).replace(/(\d)\s*[–—]\s*(\d)/g, '$1 a $2').replace(/\s*[–—]\s*/g, ', ');
+
+function urlBoton(u) {
+  const s = String(u || '').trim();
+  return /^(https:\/\/|mailto:)[^\s"<>]+$/i.test(s) ? s : 'mailto:' + MAIL_INFO;
 }
-const textoMail = ({ cuerpo, saludo }) => `${saludo}\n\n${String(cuerpo || '').trim()}\n\nUn saludo,\nEquanima Securities\n\n--\nEquanima Securities S.A. · ALyC Propio CNV N.º 191.\nSi no querés recibir más comunicaciones, respondé este mail con la palabra BAJA.`;
+
+function bloquesCuerpo(cuerpo) {
+  return String(cuerpo || '').split(/\n{2,}/).map(b => b.trim()).filter(Boolean).map(b => {
+    const lineas = b.split('\n').map(l => l.trim()).filter(Boolean);
+    if (lineas.length && lineas.every(l => /^[-•]\s+/.test(l))) {
+      const filas = lineas.map(l => l.replace(/^[-•]\s+/, ''));
+      return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:18px;">${filas.map((t, i) =>
+        `<tr><td style="padding:11px 0;border-top:1px solid ${C.line};${i === filas.length - 1 ? `border-bottom:1px solid ${C.line};` : ''}font-family:${FUENTE};font-size:14px;line-height:1.5;color:${C.muted};">${inline(t)}</td></tr>`).join('')}</table>`;
+    }
+    return `<p style="margin:14px 0 0;font-size:14px;line-height:1.6;color:${C.muted};">${lineas.map(inline).join('<br>')}</p>`;
+  }).join('');
+}
+
+// img(cid) arma la etiqueta de imagen: en el mail real apunta al adjunto en línea (cid:), en la vista previa a un data URI.
+function htmlMail({ titulo, segmento, cuerpo, saludo, botonTexto, botonUrl }, img = cid => `cid:${cid}`) {
+  const boton = limpiaLinea(botonTexto).slice(0, 60);
+  return `<!doctype html>
+<html lang="es-AR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(titulo)}</title></head>
+<body style="margin:0;padding:0;background-color:${C.alt};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${C.alt};"><tr><td align="center" style="padding:32px 16px;">
+<table role="presentation" width="640" cellpadding="0" cellspacing="0" border="0" style="width:640px;max-width:100%;background-color:#FFFFFF;border-radius:2px;overflow:hidden;">
+<tr><td align="left" style="background-color:${C.deep};padding:26px 40px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+<td align="left" valign="middle" style="line-height:0;"><img src="${img('logo-blanco')}" alt="Equanima Securities" width="107" height="24" style="display:block;height:24px;width:auto;border:0;"></td>
+<td width="22" valign="middle" style="width:22px;line-height:0;"><img src="${img('delta-blanco')}" alt="" width="22" height="22" style="display:block;border:0;width:22px;height:22px;"></td>
+</tr></table></td></tr>
+<tr><td style="padding:36px 44px 8px;font-family:${FUENTE};">
+${segmento ? `<p style="margin:0;font-size:11px;font-weight:bold;letter-spacing:1.5px;text-transform:uppercase;color:${C.muted};">${esc(segmento)}</p>` : ''}
+<h1 style="margin:${segmento ? 8 : 0}px 0 0;font-size:19px;line-height:1.3;font-weight:bold;color:${C.deep};">${esc(titulo)}</h1>
+<p style="margin:18px 0 0;font-size:14px;line-height:1.6;color:${C.muted};">${esc(saludo)}</p>
+${bloquesCuerpo(cuerpo)}
+${boton ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 8px;"><tr><td align="center" style="background-color:${C.deep};border-radius:999px;"><a href="${esc(urlBoton(botonUrl))}" style="display:inline-block;padding:13px 30px;font-family:${FUENTE};font-size:14px;font-weight:bold;color:#FFFFFF;text-decoration:none;">${esc(boton)}</a></td></tr></table>` : ''}
+<p style="margin:18px 0 0;font-size:14px;line-height:1.6;color:${C.muted};">Muchas gracias,</p>
+</td></tr>
+<tr><td style="padding:24px 44px 34px;font-family:${FUENTE};">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+<td width="97" valign="top" style="width:97px;padding-right:16px;line-height:0;"><img src="${img('delta')}" alt="" width="97" height="98" style="display:block;border:0;width:97px;height:98px;"></td>
+<td valign="top" style="padding-left:16px;border-left:1px solid #CBD3D6;">
+<p style="margin:0;font-size:14px;line-height:1.4;font-weight:bold;color:${C.deep};">Equipo Equanima Securities</p>
+<p style="margin:4px 0 0;font-size:12px;line-height:1.55;color:${C.muted};">Equanima Securities S.A.<br>ALyC Propio CNV N.º 191 · ACyDI CNV N.º 197<br>Alicia M. de Justo 140, 1B, CP1107 CABA, Argentina<br><a href="https://www.equanimasecurities.com" style="color:${C.deep};">www.equanimasecurities.com</a></p>
+</td></tr></table></td></tr>
+<tr><td style="background-color:${C.dark};padding:22px 44px;font-family:${FUENTE};">
+<p style="margin:0;font-size:11px;line-height:1.6;color:${C.soft};">Equanima Securities S.A. es Agente de Liquidación y Compensación propio, Matrícula CNV N.º 191, y Agente de Colocación y Distribución Integral de FCI, Matrícula CNV N.º 197. Miembro de BYMA, A3 Mercados y MAV. Los valores negociables se registran en subcuentas comitentes a nombre de cada titular en Caja de Valores S.A.</p>
+<p style="margin:10px 0 0;font-size:11px;line-height:1.6;color:${C.soft};">Este mensaje tiene carácter meramente informativo. No constituye una recomendación de inversión, ni una oferta de compra o venta de valores negociables.</p>
+<p style="margin:10px 0 0;font-size:11px;line-height:1.6;color:${C.soft};">Si no querés recibir más comunicaciones, respondé este mail con la palabra BAJA. · <a href="mailto:${MAIL_INFO}" style="color:#FFFFFF;">${MAIL_INFO}</a></p>
+</td></tr>
+</table></td></tr></table></body></html>`;
+}
+const textoMail = ({ titulo, segmento, cuerpo, saludo, botonTexto, botonUrl }) => [
+  segmento ? String(segmento).toUpperCase() : '', titulo, '', saludo, '', String(cuerpo || '').replace(/\*\*/g, '').trim(),
+  botonTexto ? `\n${limpiaLinea(botonTexto)}: ${urlBoton(botonUrl)}` : '',
+  '\nMuchas gracias,\nEquipo Equanima Securities\nEquanima Securities S.A.\nALyC Propio CNV N.º 191 · ACyDI CNV N.º 197\nAlicia M. de Justo 140, 1B, CP1107 CABA, Argentina\nwww.equanimasecurities.com',
+  '\n--\nEste mensaje tiene carácter meramente informativo. No constituye una recomendación de inversión, ni una oferta de compra o venta de valores negociables.\nSi no querés recibir más comunicaciones, respondé este mail con la palabra BAJA.',
+].join('\n');
+
+const saludoDe = nombre => (nombrePila(nombre) ? `Hola, ${nombrePila(nombre)}:` : 'Estimados:');
+// Los campos del mail tal como llegan del panel, con el título por defecto igual al asunto.
+const campos = b => ({
+  asunto: sinGuionLargo(limpiaLinea(b.asunto)), titulo: sinGuionLargo(limpiaLinea(b.titulo) || limpiaLinea(b.asunto)), segmento: limpiaLinea(b.segmento).slice(0, 40),
+  cuerpo: sinGuionLargo(String(b.cuerpo || '').trim()), botonTexto: sinGuionLargo(limpiaLinea(b.botonTexto)), botonUrl: String(b.botonUrl || '').trim(),
+});
 
 // ---------- Envío ----------
 function transporte(c) {
   return nodemailer.createTransport({ host: c.host, port: c.port, secure: c.port === 465, auth: { user: c.user, pass: c.pass }, connectionTimeout: 15000, greetingTimeout: 15000, socketTimeout: 30000 });
 }
-async function enviarUno(tr, c, { a, asunto, cuerpo, nombre }) {
-  const saludo = nombrePila(nombre) ? `Hola ${nombrePila(nombre)},` : 'Hola,';
-  const adjuntos = fs.existsSync(LOGO) ? [{ filename: 'equanima.png', path: LOGO, cid: 'logo-equanima' }] : [];
+async function enviarUno(tr, c, { a, mail, nombre, prefijoAsunto = '' }) {
+  const m = campos(mail), saludo = saludoDe(nombre);
+  const adjuntos = Object.entries(IMAGENES).filter(([, p]) => fs.existsSync(p)).map(([cid, p]) => ({ filename: cid + '.png', path: p, cid }));
   return tr.sendMail({
-    from: c.from, to: a, subject: limpiaLinea(asunto), replyTo: c.replyTo || undefined,
-    html: htmlMail({ asunto, cuerpo, saludo }), text: textoMail({ cuerpo, saludo }), attachments: adjuntos,
+    from: c.from, to: a, subject: prefijoAsunto + m.asunto, replyTo: c.replyTo || undefined,
+    html: htmlMail({ ...m, saludo }), text: textoMail({ ...m, saludo }), attachments: adjuntos,
     headers: { 'Auto-Submitted': 'auto-generated', 'X-Equanima-Origen': 'posiciones-clientes' },
   });
+}
+// Vista previa: las imágenes van incrustadas porque no hay adjuntos en línea.
+function htmlVista(mail) {
+  const datos = {};
+  Object.entries(IMAGENES).forEach(([cid, p]) => { if (fs.existsSync(p)) datos[cid] = 'data:image/png;base64,' + fs.readFileSync(p).toString('base64'); });
+  return htmlMail({ ...campos(mail), saludo: 'Hola, Nombre:' }, cid => datos[cid] || '');
 }
 function anotar(linea) { try { fs.mkdirSync(DIR, { recursive: true }); fs.appendFileSync(LOG, JSON.stringify(linea) + '\n'); } catch (e) { /* ignorar */ } }
 
@@ -125,10 +196,35 @@ function registrar(app, { requireAuth, comitentes }) {
   });
 
   app.post('/api/mails/vista', requireAuth, soloAlyc, (req, res) => {
-    const { asunto, cuerpo } = req.body || {};
-    // En la vista previa el logo va incrustado (en el mail real viaja como adjunto en línea).
-    const logo = fs.existsSync(LOGO) ? 'data:image/png;base64,' + fs.readFileSync(LOGO).toString('base64') : '';
-    res.json({ ok: true, html: htmlMail({ asunto, cuerpo, saludo: 'Hola Nombre,' }).replace('cid:logo-equanima', logo) });
+    res.json({ ok: true, html: htmlVista(req.body || {}) });
+  });
+
+  // Grupos de destinatarios: listas con nombre de mails, guardadas en el servidor para reusarlas.
+  const leerGrupos = () => { try { const g = JSON.parse(fs.readFileSync(GRUPOS, 'utf8')); return Array.isArray(g) ? g : []; } catch (e) { return []; } };
+  const guardarGrupos = g => { fs.mkdirSync(DIR, { recursive: true }); fs.writeFileSync(GRUPOS, JSON.stringify(g)); };
+
+  app.get('/api/mails/grupos', requireAuth, soloAlyc, (req, res) => res.json({ ok: true, grupos: leerGrupos() }));
+
+  // Crea el grupo o, si ya existe uno con ese nombre, lo reemplaza.
+  app.post('/api/mails/grupos', requireAuth, soloAlyc, (req, res) => {
+    const nombre = limpiaLinea((req.body || {}).nombre).slice(0, 60);
+    const emails = [...new Set(((req.body || {}).emails || []).map(x => String(x).trim().toLowerCase()).filter(mailValido))];
+    if (!nombre) return res.status(400).json({ ok: false, error: 'Ponele un nombre al grupo.' });
+    if (!emails.length) return res.status(400).json({ ok: false, error: 'El grupo no tiene ningún mail. Elegí destinatarios antes de guardarlo.' });
+    const g = leerGrupos(); const i = g.findIndex(x => x.nombre.toLowerCase() === nombre.toLowerCase());
+    const grupo = { id: i >= 0 ? g[i].id : 'g' + Date.now().toString(36), nombre, emails, por: req.sesion.email, actualizado: new Date().toISOString() };
+    if (i >= 0) g[i] = grupo; else g.push(grupo);
+    guardarGrupos(g);
+    anotar({ ts: grupo.actualizado, tipo: i >= 0 ? 'grupo-actualizado' : 'grupo-creado', por: req.sesion.email, grupo: nombre, mails: emails.length });
+    res.json({ ok: true, grupo, grupos: g });
+  });
+
+  app.delete('/api/mails/grupos/:id', requireAuth, soloAlyc, (req, res) => {
+    const g = leerGrupos(); const x = g.find(y => y.id === req.params.id);
+    if (!x) return res.status(404).json({ ok: false, error: 'Ese grupo no existe.' });
+    const resto = g.filter(y => y.id !== x.id); guardarGrupos(resto);
+    anotar({ ts: new Date().toISOString(), tipo: 'grupo-borrado', por: req.sesion.email, grupo: x.nombre });
+    res.json({ ok: true, grupos: resto });
   });
 
   // Redacción con IA: devuelve asunto y cuerpo para editar; no envía nada.
@@ -139,23 +235,33 @@ function registrar(app, { requireAuth, comitentes }) {
     const borrador = String((req.body || {}).borrador || '').trim().slice(0, 6000);
     if (instruccion.length < 8) return res.status(400).json({ ok: false, error: 'Contá en una o dos frases qué querés comunicar.' });
     try {
-      const sistema = `Sos quien redacta los mails de Equanima Securities, una ALyC argentina (CNV N.º 191), a sus clientes inversores.
-Escribí en español rioplatense, con tono cercano, claro y profesional; tuteo con "vos" y sin jerga innecesaria. Frases cortas, párrafos de 1 a 3 oraciones.
-Reglas que no se rompen:
-- No des recomendaciones de inversión, no prometas rendimientos ni pronostiques precios o el dólar.
-- No inventes datos, cifras, fechas, normas ni nombres: usá solo lo que te pasan. Si falta un dato necesario, dejá entre corchetes [así] lo que hay que completar.
-- No incluyas saludo inicial ("Hola...") ni despedida ni firma: el sistema los agrega.
-- No incluyas el pie legal.
-- Texto plano, sin markdown, sin emojis.
-Respondé SOLO con JSON válido: {"asunto": "...", "cuerpo": "párrafos separados por una línea en blanco"}. El asunto tiene hasta 70 caracteres.`;
+      // Voz y reglas de EQUANIMA-DOCS.md (guía de piezas del grupo). Securities opera: nunca se le atribuye a Equanima Capital ni al revés.
+      const sistema = `Sos quien redacta los mails de Equanima Securities S.A., Agente de Liquidación y Compensación propio (CNV N.º 191), a sus clientes. Equanima Securities opera en el mercado de capitales; el asesoramiento y la estructuración financiera son de Equanima Capital S.A., otra sociedad: no mezcles lo que hace cada una.
+Voz:
+- Español rioplatense con tuteo institucional ("vos", "tenés", "podés", "escribinos"); nunca "tú" ni "usted".
+- Tono sobrio, concreto y profesional. Frases cortas. Sin emojis, sin signos de exclamación y sin superlativos vacíos ("increíble", "único", "líder").
+- Puntuación: nunca uses el guion largo (—) ni el guion medio (–), ni para incisos, ni para rangos, ni para listas. Usá punto, dos puntos, coma o paréntesis. Para rangos: "de 10 a 12". Para negativos, el guion corto normal ("-3,2%").
+- Números en formato argentino, tal como vienen en lo que te pasan (punto de miles, coma decimal: "2.410.520", "38,4%", "$1.523"). No los reformatees ni los redondees.
+Reglas de contenido que no se rompen:
+- Solo usás cifras, fechas, nombres, precios y hechos que estén en lo que te pasan. Nada de conocimiento propio, estimaciones ni "aproximadamente".
+- Si hace falta un dato y no te lo dieron, escribí exactamente TBD en ese lugar. Nunca lo completes con un valor plausible.
+- No des recomendaciones de inversión, no prometas rendimientos, no compares con otros agentes y no pronostiques precios ni el dólar. Se describe, no se recomienda.
+- No incluyas saludo inicial, despedida, firma ni pie legal: la plantilla los agrega. Tampoco repitas el título dentro del cuerpo.
+Estructura del mail:
+- "titulo": el título que va dentro del mail, claro y declarativo, hasta 80 caracteres, sin guiones largos (por ejemplo "Operatoria 9 y 10 de julio de 2026").
+- "cuerpo": de 2 a 8 párrafos cortos separados por una línea en blanco. Texto plano: la única marca permitida es **doble asterisco** para una frase clave por párrafo como máximo. Para una lista de 2 a 4 puntos, escribí un bloque donde cada línea empieza con "- ".
+- "segmento": solo si es un mail comercial, uno de: Empresas, Financiamiento PyME, Banca Privada, Institucionales. Si no, "".
+- "boton_texto" y "boton_url": solo si el mail pide una acción concreta (por ejemplo coordinar una reunión). Un solo botón. Si no hay destino, boton_url queda "" (se usa info@equanimasecurities.com). Si no corresponde botón, ambos "".
+Respondé SOLO con JSON válido con estas claves: {"asunto": "hasta 70 caracteres", "titulo": "...", "segmento": "", "cuerpo": "...", "boton_texto": "", "boton_url": ""}.`;
       const r = await axios.post('https://api.anthropic.com/v1/messages', {
-        model: MODELO_IA, max_tokens: 1200, system: sistema,
+        model: MODELO_IA, max_tokens: 1800, system: sistema,
         messages: [{ role: 'user', content: borrador ? `Mejorá este borrador según la indicación.\n\nIndicación: ${instruccion}\n\nBorrador:\n${borrador}` : `Redactá el mail. Lo que hay que comunicar: ${instruccion}` }],
       }, { headers: { 'x-api-key': c.ia, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', ...(c.iaEspacio ? { 'anthropic-workspace-id': c.iaEspacio } : {}) }, timeout: 60000 });
       const texto = ((r.data && r.data.content) || []).map(b => b.text || '').join('').trim();
       const json = JSON.parse(texto.slice(texto.indexOf('{'), texto.lastIndexOf('}') + 1));
       if (!json.asunto || !json.cuerpo) throw new Error('La IA no devolvió asunto y cuerpo');
-      res.json({ ok: true, asunto: limpiaLinea(json.asunto).slice(0, 90), cuerpo: String(json.cuerpo).trim() });
+      const m = campos({ asunto: String(json.asunto).slice(0, 90), titulo: json.titulo, segmento: json.segmento, cuerpo: json.cuerpo, botonTexto: json.boton_texto, botonUrl: json.boton_url });
+      res.json({ ok: true, asunto: m.asunto.slice(0, 90), titulo: m.titulo.slice(0, 100), segmento: m.segmento, cuerpo: m.cuerpo, botonTexto: m.botonTexto, botonUrl: m.botonUrl });
     } catch (e) {
       const det = e.response && e.response.data && (e.response.data.error && e.response.data.error.message || JSON.stringify(e.response.data));
       res.status(502).json({ ok: false, error: 'No se pudo redactar con la IA: ' + String(det || e.message).slice(0, 200) });
@@ -166,13 +272,13 @@ Respondé SOLO con JSON válido: {"asunto": "...", "cuerpo": "párrafos separado
   app.post('/api/mails/prueba', requireAuth, soloAlyc, async (req, res) => {
     const c = cfg();
     if (!smtpListo(c)) return res.status(503).json({ ok: false, error: 'Falta configurar el servidor de correo en el .env (MAIL_SMTP_HOST, MAIL_SMTP_USER, MAIL_SMTP_PASS y MAIL_FROM).' });
-    const { asunto, cuerpo, a } = req.body || {};
+    const { a } = req.body || {};
     const destino = String(a || '').trim().toLowerCase();
     if (!mailValido(destino)) return res.status(400).json({ ok: false, error: 'Poné una dirección de mail válida para la prueba.' });
-    if (!limpiaLinea(asunto) || !String(cuerpo || '').trim()) return res.status(400).json({ ok: false, error: 'Falta el asunto o el texto del mail.' });
+    if (!limpiaLinea(req.body.asunto) || !String(req.body.cuerpo || '').trim()) return res.status(400).json({ ok: false, error: 'Falta el asunto o el texto del mail.' });
     try {
-      await enviarUno(transporte(c), c, { a: destino, asunto: '[PRUEBA] ' + limpiaLinea(asunto), cuerpo, nombre: '' });
-      anotar({ ts: new Date().toISOString(), tipo: 'prueba', por: req.sesion.email, a: destino, asunto: limpiaLinea(asunto) });
+      await enviarUno(transporte(c), c, { a: destino, mail: req.body, nombre: '', prefijoAsunto: '[PRUEBA] ' });
+      anotar({ ts: new Date().toISOString(), tipo: 'prueba', por: req.sesion.email, a: destino, asunto: limpiaLinea(req.body.asunto) });
       res.json({ ok: true, enviado: destino });
     } catch (e) { res.status(502).json({ ok: false, error: 'No se pudo enviar la prueba: ' + String(e.message).slice(0, 200) }); }
   });
@@ -183,6 +289,8 @@ Respondé SOLO con JSON válido: {"asunto": "...", "cuerpo": "párrafos separado
     if (!smtpListo(c)) return res.status(503).json({ ok: false, error: 'Falta configurar el servidor de correo en el .env.' });
     if (!c.masivo) return res.status(403).json({ ok: false, error: 'El envío a varios destinatarios está apagado. Se habilita con MAIL_ENVIO_MASIVO=1 en el .env cuando cumplimiento lo haya aprobado.' });
     const { asunto, cuerpo, managers, emails, confirmar } = req.body || {};
+    const mail = req.body || {};
+    if (/\bTBD\b/.test([asunto, mail.titulo, cuerpo, mail.botonTexto].join(' '))) return res.status(400).json({ ok: false, error: 'El mail todavía tiene un TBD: falta completar un dato. Reemplazalo antes de enviar.' });
     if (!limpiaLinea(asunto) || !String(cuerpo || '').trim()) return res.status(400).json({ ok: false, error: 'Falta el asunto o el texto del mail.' });
     if (Object.values(trabajos).some(t => t.estado === 'enviando')) return res.status(409).json({ ok: false, error: 'Ya hay un envío en curso. Esperá a que termine.' });
     let lista = (await destinatarios()).filter(d => d.valido && !d.baja);
@@ -199,7 +307,7 @@ Respondé SOLO con JSON válido: {"asunto": "...", "cuerpo": "párrafos separado
       const tr = transporte(c);
       for (let i = 0; i < lista.length; i += c.lote) {
         for (const d of lista.slice(i, i + c.lote)) {
-          try { await enviarUno(tr, c, { a: d.email, asunto, cuerpo, nombre: d.nombre }); t.enviados++; anotar({ ts: new Date().toISOString(), tipo: 'ok', id, a: d.email }); }
+          try { await enviarUno(tr, c, { a: d.email, mail, nombre: d.nombre }); t.enviados++; anotar({ ts: new Date().toISOString(), tipo: 'ok', id, a: d.email }); }
           catch (e) { t.fallidos++; t.errores.push({ a: d.email, error: String(e.message).slice(0, 120) }); anotar({ ts: new Date().toISOString(), tipo: 'error', id, a: d.email, error: String(e.message).slice(0, 160) }); }
         }
         if (i + c.lote < lista.length && c.pausa) await new Promise(r => setTimeout(r, c.pausa));
@@ -222,4 +330,4 @@ Respondé SOLO con JSON válido: {"asunto": "...", "cuerpo": "párrafos separado
   });
 }
 
-module.exports = { registrar, htmlMail, nombrePila, enviarUno };
+module.exports = { registrar, htmlMail, htmlVista, nombrePila, enviarUno };
