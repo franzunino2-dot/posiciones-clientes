@@ -169,7 +169,7 @@ function crearPL({ historial, leerPortafolios, cronogramaDe }) {
     const armar = (k, v0, v1v) => {
       const res = v1v - v0 - sumF(k);
       const base = v0 + ponderado(k);
-      return { inicio: v0, fin: v1v, flujos: sumF(k), resultado: res, pct: base > 0 ? res / base * 100 : null };
+      return { inicio: v0, fin: v1v, flujos: sumF(k), resultado: res, base, pct: base > 0 ? res / base * 100 : null };
     };
     const ars = armar('ars', v1.ars, v2.ars), usd = armar('usd', v1.usd, v2.usd);
 

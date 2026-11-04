@@ -270,7 +270,11 @@ function renderCliente() {
     </header>
     <main class="cv-main">${cuerpo}</main>
     <footer class="cv-foot">Equanima Securities · ALyC, CNV matrícula N° 191. ${cli.actualizado ? " Posición al " + new Date(cli.actualizado).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short", hour12: false }) + "." : ""} Información de solo lectura, tomada de tu cuenta; los valores son indicativos y pueden diferir de las liquidaciones.${PAGOS_ESTADO === "error" ? " No se pudo cargar el cronograma de pagos." : ""}</footer>`;
-  if (clienteVista.tab === "inicio") pintarPanelPL(document.getElementById("plHost"), clienteVista.id, "claro");
+  if (clienteVista.tab === "inicio") {
+    pintarPanelPL(document.getElementById("plHost"), clienteVista.id, "claro");
+    // Si el panel no está trayendo justo el resultado de hoy, se pide aparte para el resumen.
+    if (!resultadoHoy(cli) && !(PL.cargando && PL.id === cli.id && PL.desde === PL.hasta && PL.hasta === isoLocal(new Date()))) cargarHoy(cli.id);
+  }
 }
 
 function cvTarjeta(titulo, cuerpo, accion) {
@@ -329,6 +333,27 @@ function cvResultados(cli) {
     </section>`;
 }
 
+// Variación de hoy bajo el valor del portafolio: el mismo resultado que el panel "Resultado del período" con
+// "Hoy" (cierre de ayer contra ahora, descontando aportes y retiros). Sin conexión a Gallo (datos de muestra)
+// queda la cuenta vieja: precio actual contra el precio anterior de cada especie.
+function cvHoyHtml(cli) {
+  let v = null, pct = null;
+  const r = resultadoHoy(cli);
+  if (r) { v = r.resultado; pct = r.pct; }
+  else if (!sesion || !sesion.token) {
+    let dif = 0, total = 0;
+    posicionesCliente(cli).forEach(p => { total += p.ars; dif += calcPosicion(p).resultadoDia * (p.mon === "USD" ? (p.tcPos || cli.tc || 0) : 1); });
+    if (dif && total - dif) { v = dif; pct = dif / (total - dif) * 100; }
+  }
+  const txt = v === null ? "&nbsp;" : `${cvSigno(v)}${fmtMon(cli, v)}${pct !== null ? ` (${cvSigno(pct)}${fmtPct(pct)})` : ""} hoy`;
+  return `<span id="cvHoy" class="cv-sub ${v === null ? "" : cvClaseRes(v)}">${txt}</span>`;
+}
+function pintarHoyResumen() {
+  const el = document.getElementById("cvHoy");
+  const cli = el && clienteVista.id && getClientes().find(c => c.id === clienteVista.id);
+  if (cli) el.outerHTML = cvHoyHtml(cli);
+}
+
 function cvInicio(cli) {
   const pos = posicionesCliente(cli);
   const tc = cli.tc || 0;
@@ -342,12 +367,6 @@ function cvInicio(cli) {
   // Invertido + saldo = valor del portafolio, así las tres cifras cierran entre sí.
   const invertido = (cli.totalPortfolio || 0) - saldoARS;
   const partTxt = v => (cli.totalPortfolio > 0 && saldoARS >= 0 ? `${fmtPct(v / cli.totalPortfolio * 100)} del portafolio` : "&nbsp;");
-
-  // Cambio de hoy: precio actual contra el cierre anterior, en pesos.
-  let difDia = 0;
-  pos.forEach(p => { difDia += calcPosicion(p).resultadoDia * (p.mon === "USD" ? (p.tcPos || tc) : 1); });
-  const baseAnt = totalPos - difDia, pctDia = baseAnt ? difDia / baseAnt * 100 : 0;
-  const signo = difDia > 0 ? "+" : "";
 
   const mov = pos.map(p => ({ t: p.t, pct: calcPosicion(p).varDiaPct })).filter(x => isFinite(x.pct) && Math.abs(x.pct) > 0.004);
   const subas = mov.filter(x => x.pct > 0).sort((a, b) => b.pct - a.pct).slice(0, 3);
@@ -383,7 +402,7 @@ function cvInicio(cli) {
         <div>
           <span class="cv-etq">Valor del portafolio</span>
           <div class="cv-total">${fmtMon(cli, cli.totalPortfolio)}</div>
-          <span class="cv-sub ${baseAnt ? cvClaseRes(difDia) : ""}">${baseAnt ? `${signo}${fmtMon(cli, difDia)} (${signo}${fmtPct(pctDia)}) hoy` : "&nbsp;"}</span>
+          ${cvHoyHtml(cli)}
         </div>
         <div>
           <span class="cv-etq">Invertido</span>
