@@ -211,6 +211,48 @@ function tcDolaresGlobal(portafolio) {
   return g;
 }
 
+// ---------- Cierre anterior de cada especie ----------
+// Gallo informa solo el precio actual. Para la variación del día ("Movimientos del día", resultado del día) hace
+// falta el cierre anterior, que sale de data912 (la misma serie que usa el resultado por período). Se baja en
+// segundo plano, de a pocas especies a la vez: mientras no llegó, la especie queda sin variación.
+const mercado = require('./mercado');
+const isoLocal = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const CIERRES = { f: null, precio: {}, pedidos: new Set(), cola: [], activos: 0 };
+function procesarCierres() {
+  while (CIERRES.activos < 4 && CIERRES.cola.length) {
+    const t = CIERRES.cola.shift(), f = CIERRES.f;
+    CIERRES.activos++;
+    mercado.cierresDe(t).then(serie => {
+      if (CIERRES.f !== f) return; // cambió el día mientras tanto
+      const hoy = new Date(f + 'T12:00:00');
+      const ayer = new Date(hoy); ayer.setDate(ayer.getDate() - 1);
+      const habil = new Date(hoy); do { habil.setDate(habil.getDate() - 1); } while ([0, 6].includes(habil.getDay()));
+      const c = mercado.cierreEn(serie, isoLocal(ayer));
+      if (!c) { CIERRES.precio[t] = null; return; }
+      // Se acepta el cierre del día hábil anterior; uno más viejo solo si la serie se bajó hoy (feriado en el medio)
+      // y no tiene más de 6 días. Así una serie vieja guardada no da como "de hoy" la variación de varios días.
+      const bajadaHoy = serie.ts >= new Date(f + 'T00:00:00').getTime();
+      const dias = Math.round((hoy - new Date(c.fecha + 'T12:00:00')) / 86400000);
+      CIERRES.precio[t] = c.fecha >= isoLocal(habil) || (bajadaHoy && dias <= 6) ? c.precio : null;
+    }).catch(() => { if (CIERRES.f === f) CIERRES.precio[t] = null; })
+      .finally(() => { CIERRES.activos--; procesarCierres(); });
+  }
+}
+// Cierre anterior en pesos, en la misma unidad que el precio de Gallo; null si todavía no está o no es confiable.
+function cierreAnterior(ticker, precioGallo) {
+  const hoy = isoLocal(new Date());
+  if (CIERRES.f !== hoy) Object.assign(CIERRES, { f: hoy, precio: {}, pedidos: new Set(), cola: [] });
+  if (!ticker) return null;
+  if (!(ticker in CIERRES.precio)) {
+    if (!CIERRES.pedidos.has(ticker)) { CIERRES.pedidos.add(ticker); CIERRES.cola.push(ticker); procesarCierres(); }
+    return null;
+  }
+  const c = CIERRES.precio[ticker];
+  // Sanidad: si la serie está en otra unidad (o es otra especie con el mismo ticker) no se usa.
+  if (!c || !(precioGallo > 0) || c / precioGallo < 0.75 || c / precioGallo > 1.33) return null;
+  return c;
+}
+
 function armarCliente(cod, cli, mgrMap, portafolio, tcGlobal = {}) {
   const costosCuenta = historial.costosDe(cod) || {};
   const p = portafolio[cod] || { activos: [], resumen: {} };
@@ -243,7 +285,9 @@ function armarCliente(cod, cli, mgrMap, portafolio, tcGlobal = {}) {
       const m = c && (usd ? c.USD : c.ARS);
       if (m && Math.abs(m.q - a.cantidad) <= Math.max(1, Math.abs(a.cantidad) * 0.005)) { co = m.u / factorUnidad; costoDeCompras = true; }
     }
-    return { t: a.ticker, n: a.especie, c: a.cantidad, p: a.precio, co, pa: a.precio, factorUnidad, ...(costoDeCompras ? { costoDeCompras: true, costoMoneda: /usd/i.test(a.tipoActivo || '') ? 'USD' : 'ARS' } : {}) };
+    // pa = cierre anterior (en pesos, como el precio de Gallo); sin cierre conocido queda igual al precio: variación 0.
+    const pa = cierreAnterior(a.ticker, a.precio) || a.precio;
+    return { t: a.ticker, n: a.especie, c: a.cantidad, p: a.precio, co, pa, factorUnidad, ...(costoDeCompras ? { costoDeCompras: true, costoMoneda: /usd/i.test(a.tipoActivo || '') ? 'USD' : 'ARS' } : {}) };
   };
   const activos = p.activos || [];
   const detallePesos = activos.filter(a => !/usd/i.test(a.tipoActivo || '') && a.ticker).map(conFactor);
@@ -256,7 +300,7 @@ function armarCliente(cod, cli, mgrMap, portafolio, tcGlobal = {}) {
     const d = conFactor(a);
     d.cable = esCable(a);
     d.tcPos = (d.cable ? tcCable : tcMep) || tc;
-    if (d.tcPos > 0) { d.p = a.precio / d.tcPos; if (!d.costoDeCompras) d.co = a.costo / d.tcPos; d.pa = d.p; }
+    if (d.tcPos > 0) { d.p = a.precio / d.tcPos; if (!d.costoDeCompras) d.co = a.costo / d.tcPos; d.pa = d.pa / d.tcPos; }
     return d;
   });
   const valorDolaresARS = activos.filter(esUsd).reduce((acc, a) => acc + num(a.importe), 0);
