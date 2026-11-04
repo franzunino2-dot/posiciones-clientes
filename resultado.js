@@ -64,7 +64,7 @@ function dibujarPL() {
   const k = usd ? "usd" : "ars";
   const m = v => (v < 0 ? "-" : "") + (usd ? "USD " : "$ ") + fmtMoney(Math.abs(v), usd ? 2 : 0);
   const signo = v => (v > 0 ? "+" : "");
-  const col = v => (v < 0 ? (claro ? "cv-rojo" : "neg") : (claro ? "cv-verde" : "pos"));
+  const col = v => (v < 0 ? (claro ? "cv-rojo" : "neg") : v > 0 ? (claro ? "cv-verde" : "pos") : (claro ? "cv-gris" : ""));
   const presets = [["hoy", "Hoy"], ["ayer", "Último día hábil"], ["7d", "7 días"], ["mes", "Mes"], ["anio", "Año"], ["todo", "Todo"]];
   const hoyIso = isoLocal(new Date());
 
@@ -84,11 +84,9 @@ function dibujarPL() {
       <div class="pl-grande">
         <div><span class="pl-etq">Resultado</span><div class="pl-valor ${col(r.resultado)}">${signo(r.resultado)}${m(r.resultado)}</div>
           <span class="pl-sub ${r.pct == null ? "" : col(r.pct)}">${r.pct == null ? "" : signo(r.pct) + fmtPct(r.pct)}</span></div>
-        <div class="pl-chicos">
-          <div><span class="pl-etq">Valor al inicio</span><b>${m(r.inicio)}</b></div>
-          <div><span class="pl-etq">Aportes y retiros</span><b>${signo(r.flujos)}${m(r.flujos)}</b></div>
-          <div><span class="pl-etq">Valor al final</span><b>${m(r.fin)}</b></div>
-        </div>
+        <div><span class="pl-etq">Valor al inicio</span><b>${m(r.inicio)}</b></div>
+        <div><span class="pl-etq">Aportes y retiros</span><b class="${r.flujos ? "" : (claro ? "cv-gris" : "")}">${signo(r.flujos)}${m(r.flujos)}</b></div>
+        <div><span class="pl-etq">Valor al final</span><b>${m(r.fin)}</b></div>
       </div>
       <div class="pl-desglose">${filas.map(([n, v, t]) => `<div class="pl-fila"><span title="${esc(t)}">${n}</span><b class="${col(v)}">${signo(v)}${m(v)}</b></div>`).join("")}</div>
       ${d.precios.estimadas.length ? `<p class="pl-nota">${d.precios.estimadas.length === 1 ? "La especie" : d.precios.estimadas.length + " especies"} sin precio histórico se valuó${d.precios.estimadas.length === 1 ? "" : "aron"} al precio de hoy (${esc(d.precios.estimadas.slice(0, 6).join(", "))}${d.precios.estimadas.length > 6 ? "…" : ""}): el resultado puede variar un poco.</p>` : ""}
