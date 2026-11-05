@@ -1245,6 +1245,9 @@ async function pulsoCuenta() {
     const mueveTotal = antes && Math.abs((j.comitente.totalPortfolio || 0) - (antes.totalPortfolio || 0)) > Math.max(1, Math.abs(antes.totalPortfolio || 0) * 0.00005);
     if (j.cambio) {
       Object.keys(RENDF).filter(k => k.startsWith(id + "|")).forEach(k => delete RENDF[k]); // cobros y cauciones se vuelven a pedir
+      // Hubo un movimiento: el resultado del período (y el de hoy) cambia más allá del precio; se recalcula.
+      if (PL_HOY.id === id) PL_HOY.datos = null;
+      if (PL.id === id) plCargar();
       VIVO.ult[id] = Date.now();
       const det = (j.cambios || []).slice(0, 4).map(c => `${c.t} ${c.delta > 0 ? "+" : "−"}${fmtMoney(Math.abs(c.delta), 0)}`).join(", ");
       avisoCuenta(`Movimiento en la cuenta ${id}${det ? ": " + det : ": cambió un saldo"}. Se actualizó la posición${j.historialOk ? " y el historial" : ""}.`);

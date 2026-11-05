@@ -85,8 +85,7 @@
   .pl-valor { font-family: var(--serif); font-size: 44px; line-height: 1.1; letter-spacing: -.01em; }
   .pl-etq { font-size: 12px; color: var(--muted); display: block; }
   .pl-sub { font-size: 15px; font-weight: 600; }
-  .pl-chicos { display: flex; gap: 26px; flex-wrap: wrap; }
-  .pl-chicos b { display: block; font-size: 16px; margin-top: 2px; font-weight: 600; }
+  .pl-grande > div > b { display: block; font-size: 16px; margin-top: 2px; font-weight: 600; }
   .pl-fila { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid rgba(128,128,128,.2); font-size: 14px; }
   .pl-fila:last-child { border-bottom: none; }
   .pl-nota { font-size: 12px; color: var(--muted); margin: 10px 0 0; line-height: 1.5; }
@@ -690,6 +689,42 @@
   .cv-modal { box-shadow: 0 18px 50px rgba(8,39,64,.35); }
   #avisoCuenta { background: var(--deep-dark); border-left-color: var(--accent); border-radius: var(--r); }
   .cv-foot { color: var(--slate); }
+
+  /* ---------- Inicio del cliente: una sola escala (40 / 22 / 14 / 12) y columnas parejas ---------- */
+  .cv-hola { font-size: 28px; margin-bottom: 4px; }
+  .cv-fecha { font-size: 12px; color: var(--ink-soft); margin-bottom: 18px; }
+  .cv-resumen { display: block; padding: 24px 28px; }
+  .cv-cifras { display: grid; grid-template-columns: repeat(3, 1fr); align-items: start; }
+  .cv-resumen .cv-cifras { grid-template-columns: minmax(max-content, 1.2fr) 1fr 1fr; align-items: end; }
+  .cv-cifras > div { padding: 0 24px; border-left: 1px solid var(--line-light); min-width: 0; }
+  .cv-cifras > div:first-child { padding-left: 0; border-left: 0; }
+  .cv-cifras .cv-etq { display: block; margin-bottom: 8px; }
+  .cv-cifras .cv-sub { margin-top: 6px; }
+  .cv-total { font-size: 40px; line-height: 1; font-weight: 400; white-space: nowrap; }
+  .cv-cifra { white-space: nowrap; }
+  .cv-cifra { font-size: 22px; line-height: 1.1; font-weight: 400; letter-spacing: -.01em; }
+  .cv-sub.cv-verde { color: #14956b; } .cv-sub.cv-rojo { color: #d94a4a; }
+  .cv-cifra.cv-gris, #clienteApp .pl-fila b.cv-gris { color: var(--ink-soft); }
+  #clienteApp .pl-cab h3 { font-size: 16px; font-weight: 500; }
+  #clienteApp .pl-presets { margin-bottom: 22px; }
+  #clienteApp .pl-grande { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; align-items: start; margin-bottom: 22px; }
+  #clienteApp .pl-grande > div { padding: 0 24px; border-left: 1px solid var(--line-light); min-width: 0; }
+  #clienteApp .pl-grande > div:first-child { padding-left: 0; border-left: 0; }
+  #clienteApp .pl-etq { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 8px; }
+  #clienteApp .pl-valor, #clienteApp .pl-grande > div > b { font-size: 22px; line-height: 1.1; font-weight: 400; letter-spacing: -.01em; margin: 0; }
+  #clienteApp .pl-grande > div > b.cv-gris { color: var(--ink-soft); }
+  #clienteApp .pl-sub { display: block; font-size: 12px; font-weight: 400; margin-top: 6px; }
+  #clienteApp .pl-desglose { border-top: 1px solid var(--line-light); }
+  #clienteApp .pl-fila { padding: 11px 0; border-bottom: 1px solid var(--line-light); }
+  #clienteApp .pl-fila b { font-weight: 400; }
+  #clienteApp #plPanel .pl-mon button, #clienteApp #plPanel .pl-presets button { background: #fff; color: var(--ink); border: 1px solid var(--line-light); font-weight: 400; }
+  #clienteApp #plPanel .pl-mon button.on, #clienteApp #plPanel .pl-presets button.on { background: var(--deep); color: #fff; border-color: var(--deep); font-weight: 400; }
+  @media (max-width: 820px) {
+    .cv-cifras, .cv-resumen .cv-cifras, #clienteApp .pl-grande { grid-template-columns: 1fr; row-gap: 14px; }
+    .cv-cifras > div, #clienteApp .pl-grande > div { padding: 14px 0 0; border-left: 0; border-top: 1px solid var(--line-light); }
+    .cv-cifras > div:first-child, #clienteApp .pl-grande > div:first-child { padding-top: 0; border-top: 0; }
+    .cv-total { font-size: 34px; }
+  }
 </style>
 </head>
 <body>

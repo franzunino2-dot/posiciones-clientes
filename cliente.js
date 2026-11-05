@@ -270,7 +270,11 @@ function renderCliente() {
     </header>
     <main class="cv-main">${cuerpo}</main>
     <footer class="cv-foot">Equanima Securities · ALyC, CNV matrícula N° 191. ${cli.actualizado ? " Posición al " + new Date(cli.actualizado).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short", hour12: false }) + "." : ""} Información de solo lectura, tomada de tu cuenta; los valores son indicativos y pueden diferir de las liquidaciones.${PAGOS_ESTADO === "error" ? " No se pudo cargar el cronograma de pagos." : ""}</footer>`;
-  if (clienteVista.tab === "inicio") pintarPanelPL(document.getElementById("plHost"), clienteVista.id, "claro");
+  if (clienteVista.tab === "inicio") {
+    pintarPanelPL(document.getElementById("plHost"), clienteVista.id, "claro");
+    // Si el panel no está trayendo justo el resultado de hoy, se pide aparte para el resumen.
+    if (!resultadoHoy(cli) && !(PL.cargando && PL.id === cli.id && PL.desde === PL.hasta && PL.hasta === isoLocal(new Date()))) cargarHoy(cli.id);
+  }
 }
 
 function cvTarjeta(titulo, cuerpo, accion) {
@@ -303,22 +307,51 @@ function resultadosCliente(cli) {
 }
 
 function cvSigno(v) { return v > 0 ? "+" : ""; }
+// Verde/rojo solo para ganancias o pérdidas; el cero va en gris.
+function cvClaseRes(v) { return v < 0 ? "cv-rojo" : v > 0 ? "cv-verde" : "cv-gris"; }
+// "Bosch, Marcelo Mariano" -> "Marcelo". Sin coma (empresas, otros formatos) queda el nombre completo.
+function nombrePila(s) {
+  const t = String(s || "").trim(), i = t.indexOf(",");
+  if (i < 0) return titulo(t);
+  return titulo(t.slice(i + 1).trim().split(/\s+/)[0] || t.slice(0, i));
+}
 
 function cvResultados(cli) {
   const r = resultadosCliente(cli);
-  const clase = v => (v < 0 ? "cv-rojo" : "cv-verde");
-  const montoPct = (ars, pct) => `<b class="${clase(ars)}">${cvSigno(ars)}${fmtMon(cli, ars)}</b>${pct !== null ? `<span class="cv-sub">${cvSigno(pct)}${fmtPct(pct)}</span>` : ""}`;
+  const monto = ars => `<div class="cv-cifra ${cvClaseRes(ars)}">${cvSigno(ars)}${fmtMon(cli, ars)}</div>`;
+  const pct = p => (p !== null && p !== undefined ? `${cvSigno(p)}${fmtPct(p)} · ` : "");
   const total = r.noReal + (r.tieneHistorial ? r.real : 0);
   return `
     <section class="cv-card cv-pl">
-      <div class="cv-card-h"><h3>Resultado</h3></div>
-      <div class="cv-pl-grid">
-        <div><span class="cv-etq">No realizado</span><div class="cv-pl-v">${montoPct(r.noReal, r.noRealPct)}</div><span class="cv-sub">Tenencias actuales contra su costo</span></div>
-        <div><span class="cv-etq">Realizado</span><div class="cv-pl-v">${r.tieneHistorial ? montoPct(r.real, r.realPct) : '<b class="cv-gris">—</b>'}</div>
-          <span class="cv-sub">${r.tieneHistorial ? `${r.nOps} operaciones cerradas desde ${fmtFecha(r.desde)}` : "Historial de operaciones todavía no cargado"}</span></div>
-        <div><span class="cv-etq">Total${r.tieneHistorial ? "" : " (solo no realizado)"}</span><div class="cv-pl-v"><b class="${clase(total)}">${cvSigno(total)}${fmtMon(cli, total)}</b></div><span class="cv-sub">Realizado + no realizado</span></div>
+      <div class="cv-card-h"><h3>Resultado acumulado</h3></div>
+      <div class="cv-cifras">
+        <div><span class="cv-etq">No realizado</span>${monto(r.noReal)}<span class="cv-sub">${pct(r.noRealPct)}Tenencias actuales contra su costo</span></div>
+        <div><span class="cv-etq">Realizado</span>${r.tieneHistorial ? monto(r.real) : '<div class="cv-cifra cv-gris">—</div>'}
+          <span class="cv-sub">${r.tieneHistorial ? `${pct(r.realPct)}${r.nOps} operaciones cerradas desde ${fmtFecha(r.desde)}` : "Historial de operaciones todavía no cargado"}</span></div>
+        <div><span class="cv-etq">Total${r.tieneHistorial ? "" : " (solo no realizado)"}</span>${monto(total)}<span class="cv-sub">Realizado + no realizado</span></div>
       </div>
     </section>`;
+}
+
+// Variación de hoy bajo el valor del portafolio: el mismo resultado que el panel "Resultado del período" con
+// "Hoy" (cierre de ayer contra ahora, descontando aportes y retiros). Sin conexión a Gallo (datos de muestra)
+// queda la cuenta vieja: precio actual contra el precio anterior de cada especie.
+function cvHoyHtml(cli) {
+  let v = null, pct = null;
+  const r = resultadoHoy(cli);
+  if (r) { v = r.resultado; pct = r.pct; }
+  else if (!sesion || !sesion.token) {
+    let dif = 0, total = 0;
+    posicionesCliente(cli).forEach(p => { total += p.ars; dif += calcPosicion(p).resultadoDia * (p.mon === "USD" ? (p.tcPos || cli.tc || 0) : 1); });
+    if (dif && total - dif) { v = dif; pct = dif / (total - dif) * 100; }
+  }
+  const txt = v === null ? "&nbsp;" : `${cvSigno(v)}${fmtMon(cli, v)}${pct !== null ? ` (${cvSigno(pct)}${fmtPct(pct)})` : ""} hoy`;
+  return `<span id="cvHoy" class="cv-sub ${v === null ? "" : cvClaseRes(v)}">${txt}</span>`;
+}
+function pintarHoyResumen() {
+  const el = document.getElementById("cvHoy");
+  const cli = el && clienteVista.id && getClientes().find(c => c.id === clienteVista.id);
+  if (cli) el.outerHTML = cvHoyHtml(cli);
 }
 
 function cvInicio(cli) {
@@ -327,16 +360,13 @@ function cvInicio(cli) {
   const saldoARS = (cli.pesos.cuentaCorriente || 0) + saldosDolares(cli).ars;
   const pagos = pagosCliente(cli);
   const proximos = pagos.slice(0, 4);
-  const nombre = titulo(cli.nombre);
+  const fecha = new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" }).replace(",", "");
   const hora = new Date().getHours();
   const saludo = hora < 12 ? "Buenos días" : hora < 20 ? "Buenas tardes" : "Buenas noches";
   const totalPos = pos.reduce((a, p) => a + p.ars, 0);
-
-  // Cambio de hoy: precio actual contra el cierre anterior, en pesos.
-  let difDia = 0;
-  pos.forEach(p => { difDia += calcPosicion(p).resultadoDia * (p.mon === "USD" ? (p.tcPos || tc) : 1); });
-  const baseAnt = totalPos - difDia, pctDia = baseAnt ? difDia / baseAnt * 100 : 0;
-  const signo = difDia > 0 ? "+" : "";
+  // Invertido + saldo = valor del portafolio, así las tres cifras cierran entre sí.
+  const invertido = (cli.totalPortfolio || 0) - saldoARS;
+  const partTxt = v => (cli.totalPortfolio > 0 && saldoARS >= 0 ? `${fmtPct(v / cli.totalPortfolio * 100)} del portafolio` : "&nbsp;");
 
   const mov = pos.map(p => ({ t: p.t, pct: calcPosicion(p).varDiaPct })).filter(x => isFinite(x.pct) && Math.abs(x.pct) > 0.004);
   const subas = mov.filter(x => x.pct > 0).sort((a, b) => b.pct - a.pct).slice(0, 3);
@@ -365,17 +395,25 @@ function cvInicio(cli) {
     </div>` : `<p class="cv-vacio">Todavía no hay variación de precios hoy.</p>`;
 
   return `
-    <div class="cv-hola">${saludo}, ${esc(nombre)}</div>
-    <section class="cv-resumen">
-      <div>
-        <span class="cv-etq">Valor del portafolio</span>
-        <div class="cv-total">${fmtMon(cli, cli.totalPortfolio)}</div>
-        ${baseAnt ? `<div class="cv-var ${difDia < 0 ? "cv-rojo" : "cv-verde"}">${signo}${fmtMon(cli, difDia)} (${signo}${fmtPct(pctDia)}) hoy</div>` : ""}
-      </div>
-      <div>
-        <span class="cv-etq">Saldo en cuenta</span>
-        <div class="cv-saldo ${saldoARS < 0 ? "cv-rojo" : ""}">${fmtMon(cli, saldoARS)}</div>
-        <span class="cv-sub">${saldoARS < 0 ? "Saldo negativo (financiación)" : "Disponible"}</span>
+    <div class="cv-hola">${saludo}, ${esc(nombrePila(cli.nombre))}</div>
+    <div class="cv-fecha">${fecha.charAt(0).toUpperCase() + fecha.slice(1)}</div>
+    <section class="cv-card cv-resumen">
+      <div class="cv-cifras">
+        <div>
+          <span class="cv-etq">Valor del portafolio</span>
+          <div class="cv-total">${fmtMon(cli, cli.totalPortfolio)}</div>
+          ${cvHoyHtml(cli)}
+        </div>
+        <div>
+          <span class="cv-etq">Invertido</span>
+          <div class="cv-cifra">${fmtMon(cli, invertido)}</div>
+          <span class="cv-sub">${partTxt(invertido)}</span>
+        </div>
+        <div>
+          <span class="cv-etq">${saldoARS < 0 ? "Saldo en cuenta" : "Saldo disponible"}</span>
+          <div class="cv-cifra ${saldoARS < 0 ? "cv-rojo" : ""}">${fmtMon(cli, saldoARS)}</div>
+          <span class="cv-sub">${saldoARS < 0 ? "Saldo negativo (financiación)" : partTxt(saldoARS)}</span>
+        </div>
       </div>
     </section>
     ${cvResultados(cli)}

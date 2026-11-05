@@ -8,6 +8,40 @@ try { PL.moneda = sessionStorage.getItem("monedaPL") || "ARS"; } catch (e) { /* 
 const isoLocal = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const fechaDMY = s => { const [y, m, d] = s.split("-"); return `${d}/${m}/${y}`; };
 
+// Resultado de hoy de la cuenta para el resumen de Inicio. Sale del mismo cálculo que el panel, así el "hoy" de
+// arriba y el del panel son siempre el mismo número.
+const PL_HOY = { id: null, f: null, datos: null, cargando: false };
+function guardarHoy(id, j) { Object.assign(PL_HOY, { id, f: isoLocal(new Date()), datos: j }); }
+async function cargarHoy(id) {
+  if (!sesion || !sesion.token || !id || PL_HOY.cargando) return;
+  const h = isoLocal(new Date());
+  PL_HOY.cargando = true;
+  try {
+    const r = await fetch(`/api/cuenta/${encodeURIComponent(id)}/resultado?desde=${h}&hasta=${h}`, { headers: { Authorization: "Bearer " + sesion.token } });
+    const j = await r.json();
+    if (j.ok) guardarHoy(id, j);
+  } catch (e) { /* sin resultado de hoy: el resumen no muestra la variación */ }
+  PL_HOY.cargando = false;
+  if (typeof pintarHoyResumen === "function") pintarHoyResumen();
+}
+function resultadoHoy(cli) {
+  if (!cli || PL_HOY.id !== cli.id || PL_HOY.f !== isoLocal(new Date()) || !PL_HOY.datos) return null;
+  return alVivo(PL_HOY.datos, "ars", cli);
+}
+// Un resultado que termina hoy se lleva al valor actual de la cuenta. El servidor lo calculó con el total de ese
+// momento, pero el total se actualiza con cada pulso; el valor al inicio y los aportes no cambian, así que la
+// diferencia va entera al resultado (y dentro del desglose, a lo no realizado).
+function alVivo(d, k, cli) {
+  const r = d[k];
+  if (!cli || !(cli.totalPortfolio > 0) || d.hasta < isoLocal(new Date())) return r;
+  const tc = d.tc && d.tc.fin;
+  const fin = k === "usd" ? (tc ? cli.totalPortfolio / tc : r.fin) : cli.totalPortfolio;
+  const delta = fin - r.fin;
+  if (!delta) return r;
+  const resultado = r.resultado + delta;
+  return { ...r, fin, resultado, pct: r.base > 0 ? resultado / r.base * 100 : r.pct, desglose: { ...r.desglose, noRealizado: r.desglose.noRealizado + delta } };
+}
+
 function plRango(preset) {
   const hoy = new Date();
   const h = isoLocal(hoy);
@@ -51,6 +85,7 @@ async function plCargar() {
     const j = await r.json();
     if (id !== PL.id || pedido !== `${PL.desde}|${PL.hasta}`) return; // cambió la cuenta o el rango mientras tanto
     if (j.ok) PL.datos = j; else { PL.datos = null; PL.error = j.error || "No se pudo calcular el resultado."; }
+    if (j.ok && PL.desde === PL.hasta && PL.hasta === isoLocal(new Date())) { guardarHoy(id, j); if (typeof pintarHoyResumen === "function") pintarHoyResumen(); }
   } catch (e) { PL.datos = null; PL.error = "No se pudo calcular el resultado."; }
   PL.cargando = false;
   dibujarPL();
@@ -64,7 +99,7 @@ function dibujarPL() {
   const k = usd ? "usd" : "ars";
   const m = v => (v < 0 ? "-" : "") + (usd ? "USD " : "$ ") + fmtMoney(Math.abs(v), usd ? 2 : 0);
   const signo = v => (v > 0 ? "+" : "");
-  const col = v => (v < 0 ? (claro ? "cv-rojo" : "neg") : (claro ? "cv-verde" : "pos"));
+  const col = v => (v < 0 ? (claro ? "cv-rojo" : "neg") : v > 0 ? (claro ? "cv-verde" : "pos") : (claro ? "cv-gris" : ""));
   const presets = [["hoy", "Hoy"], ["ayer", "Último día hábil"], ["7d", "7 días"], ["mes", "Mes"], ["anio", "Año"], ["todo", "Todo"]];
   const hoyIso = isoLocal(new Date());
 
@@ -72,7 +107,7 @@ function dibujarPL() {
   if (PL.cargando && !d) cuerpo = `<p class="pl-nota">Calculando con los precios de cada día…</p>`;
   else if (PL.error) cuerpo = `<p class="pl-nota">${esc(PL.error)}</p>`;
   else if (d) {
-    const r = d[k], dg = r.desglose;
+    const r = alVivo(d, k, getClientes().find(c => c.id === PL.id)), dg = r.desglose;
     const filas = [
       ["Operaciones cerradas", dg.realizado, "Ganancia o pérdida de lo vendido en el período"],
       ["Dividendos y rentas", dg.cobros, "Lo cobrado de acciones y bonos"],
@@ -84,11 +119,9 @@ function dibujarPL() {
       <div class="pl-grande">
         <div><span class="pl-etq">Resultado</span><div class="pl-valor ${col(r.resultado)}">${signo(r.resultado)}${m(r.resultado)}</div>
           <span class="pl-sub ${r.pct == null ? "" : col(r.pct)}">${r.pct == null ? "" : signo(r.pct) + fmtPct(r.pct)}</span></div>
-        <div class="pl-chicos">
-          <div><span class="pl-etq">Valor al inicio</span><b>${m(r.inicio)}</b></div>
-          <div><span class="pl-etq">Aportes y retiros</span><b>${signo(r.flujos)}${m(r.flujos)}</b></div>
-          <div><span class="pl-etq">Valor al final</span><b>${m(r.fin)}</b></div>
-        </div>
+        <div><span class="pl-etq">Valor al inicio</span><b>${m(r.inicio)}</b></div>
+        <div><span class="pl-etq">Aportes y retiros</span><b class="${r.flujos ? "" : (claro ? "cv-gris" : "")}">${signo(r.flujos)}${m(r.flujos)}</b></div>
+        <div><span class="pl-etq">Valor al final</span><b>${m(r.fin)}</b></div>
       </div>
       <div class="pl-desglose">${filas.map(([n, v, t]) => `<div class="pl-fila"><span title="${esc(t)}">${n}</span><b class="${col(v)}">${signo(v)}${m(v)}</b></div>`).join("")}</div>
       ${d.precios.estimadas.length ? `<p class="pl-nota">${d.precios.estimadas.length === 1 ? "La especie" : d.precios.estimadas.length + " especies"} sin precio histórico se valuó${d.precios.estimadas.length === 1 ? "" : "aron"} al precio de hoy (${esc(d.precios.estimadas.slice(0, 6).join(", "))}${d.precios.estimadas.length > 6 ? "…" : ""}): el resultado puede variar un poco.</p>` : ""}
